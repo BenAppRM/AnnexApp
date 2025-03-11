@@ -1209,263 +1209,144 @@ def activities():
                                partialQuartersMap=partial_quarters_map)
 
 
-
-def parse_date(year, month, day):
-    try:
-        # month is expected as a full month name (e.g., "October")
-        month_num = datetime.strptime(month, '%B').month
-        return datetime(int(year), month_num, int(day))
-    except Exception:
-        return None
-
 @app.route('/procurement', methods=['GET', 'POST'])
 def procurement():
-    init_session()  # Ensure session keys exist
-    error = None
+    init_session()
     if request.method == 'POST':
-        action = request.form.get('action')
-        # Save checkbox selections
-        if action in ['select_types', 'proceed', 'finalize']:
-            session['use_goods'] = bool(request.form.get('use_goods'))
-            session['use_services'] = bool(request.form.get('use_services'))
-            session['no_procurement'] = bool(request.form.get('no_procurement'))
-            # For "proceed", simply re-render the page so that the forms appear.
-            if action == 'proceed':
-                return render_template('procurement.html',
-                                       use_goods=session.get('use_goods'),
-                                       use_services=session.get('use_services'),
-                                       no_procurement=session.get('no_procurement'),
-                                       goods=session.get('goods', []),
-                                       services=session.get('services', []))
-            elif action == 'finalize':
-                # If "No Procurement" is checked, clear any existing data and go to review.
-                if session.get('no_procurement'):
-                    session['goods'] = []
-                    session['services'] = []
-                    return redirect(url_for('review'))
-                # Otherwise, ensure that if procurement is selected, at least one entry exists.
-                if session.get('use_goods') and not session.get('goods'):
-                    flash("Please add at least one Procurement of Goods entry or uncheck the box.")
-                    return render_template('procurement.html',
-                                           use_goods=session.get('use_goods'),
-                                           use_services=session.get('use_services'),
-                                           no_procurement=session.get('no_procurement'),
-                                           goods=session.get('goods', []),
-                                           services=session.get('services', []))
-                if session.get('use_services') and not session.get('services'):
-                    flash("Please add at least one Subcontracting of Commercial Services entry or uncheck the box.")
-                    return render_template('procurement.html',
-                                           use_goods=session.get('use_goods'),
-                                           use_services=session.get('use_services'),
-                                           no_procurement=session.get('no_procurement'),
-                                           goods=session.get('goods', []),
-                                           services=session.get('services', []))
-                return redirect(url_for('review'))
-        elif action in ['add_goods', 'add_services']:
-            if action == 'add_goods':
-                tender_year = request.form.get('pog_tender_launch_year')
-                tender_month = request.form.get('pog_tender_launch_month')
-                tender_day = request.form.get('pog_tender_launch_day')
-                award_year = request.form.get('pog_contract_award_year')
-                award_month = request.form.get('pog_contract_award_month')
-                award_day = request.form.get('pog_contract_award_day')
-                delivery_year = request.form.get('pog_delivery_year')
-                delivery_month = request.form.get('pog_delivery_month')
-                delivery_day = request.form.get('pog_delivery_day')
-                
-                tender_date = parse_date(tender_year, tender_month, tender_day)
-                award_date = parse_date(award_year, award_month, award_day)
-                delivery_date = parse_date(delivery_year, delivery_month, delivery_day)
-                
-                if not (tender_date and award_date and delivery_date):
-                    error = "Please enter valid dates for all fields."
-                elif not (tender_date <= award_date <= delivery_date):
-                    error = "Date order error: Tender Launch Date must be ≤ Contract Award Date ≤ Delivery Date."
-                
-                if error:
-                    flash(error)
-                    return render_template('procurement.html',
-                                           use_goods=session.get('use_goods'),
-                                           use_services=session.get('use_services'),
-                                           no_procurement=session.get('no_procurement'),
-                                           goods=session.get('goods', []),
-                                           services=session.get('services', []))
-                
-                entry = {
-                    'project_activity': request.form.get('pog_project_activity'),
-                    'required_good': request.form.get('pog_required_good'),
-                    'unit_measure': request.form.get('pog_unit_measure'),
-                    'estimated_qty': int(request.form.get('pog_estimated_qty')),
-                    'unit_price': int(request.form.get('pog_unit_price')),
-                    'estimated_total_cost': int(request.form.get('pog_estimated_total_cost')),
-                    'procurement_method': request.form.get('pog_procurement_method'),
-                    'tender_launch_date': f"{tender_year}-{datetime.strptime(tender_month, '%B').month:02d}-{int(tender_day):02d}",
-                    'contract_award_date': f"{award_year}-{datetime.strptime(award_month, '%B').month:02d}-{int(award_day):02d}",
-                    'delivery_date': f"{delivery_year}-{datetime.strptime(delivery_month, '%B').month:02d}-{int(delivery_day):02d}",
-                    'final_destination_terms': request.form.get('pog_final_destination_terms'),
-                    'status': request.form.get('pog_status'),
-                    'constraints': request.form.get('pog_constraints')
-                }
-                goods = session.get('goods', [])
-                goods.append(entry)
-                session['goods'] = goods
-                flash("Procurement of Goods entry added successfully.")
-            elif action == 'add_services':
-                psc_launch_year = request.form.get('psc_tender_launch_year')
-                psc_launch_month = request.form.get('psc_tender_launch_month')
-                psc_launch_day = request.form.get('psc_tender_launch_day')
-                psc_award_year = request.form.get('psc_contract_award_year')
-                psc_award_month = request.form.get('psc_contract_award_month')
-                psc_award_day = request.form.get('psc_contract_award_day')
-                psc_delivery_year = request.form.get('psc_delivery_year')
-                psc_delivery_month = request.form.get('psc_delivery_month')
-                psc_delivery_day = request.form.get('psc_delivery_day')
-                
-                tender_date = parse_date(psc_launch_year, psc_launch_month, psc_launch_day)
-                award_date = parse_date(psc_award_year, psc_award_month, psc_award_day)
-                delivery_date = parse_date(psc_delivery_year, psc_delivery_month, psc_delivery_day)
-                
-                if not (tender_date and award_date and delivery_date):
-                    error = "Please enter valid dates for all fields."
-                elif not (tender_date <= award_date <= delivery_date):
-                    error = "Date order error: Tender Launch Date must be ≤ Contract Award Date ≤ Delivery Date."
-                
-                if error:
-                    flash(error)
-                    return render_template('procurement.html',
-                                           use_goods=session.get('use_goods'),
-                                           use_services=session.get('use_services'),
-                                           no_procurement=session.get('no_procurement'),
-                                           goods=session.get('goods', []),
-                                           services=session.get('services', []))
-                
-                entry = {
-                    'project_activity': request.form.get('psc_project_activity'),
-                    'service_description': request.form.get('psc_service_description'),
-                    'unit_measure': request.form.get('psc_unit_measure'),
-                    'estimated_qty': int(request.form.get('psc_estimated_qty')),
-                    'unit_price': int(request.form.get('psc_unit_price')),
-                    'estimated_total_cost': int(request.form.get('psc_estimated_total_cost')),
-                    'procurement_method': request.form.get('psc_procurement_method'),
-                    'tender_launch_date': f"{psc_launch_year}-{datetime.strptime(psc_launch_month, '%B').month:02d}-{int(psc_launch_day):02d}",
-                    'contract_award_date': f"{psc_award_year}-{datetime.strptime(psc_award_month, '%B').month:02d}-{int(psc_award_day):02d}",
-                    'delivery_date': f"{psc_delivery_year}-{datetime.strptime(psc_delivery_month, '%B').month:02d}-{int(psc_delivery_day):02d}",
-                    'final_destination_terms': request.form.get('psc_final_destination_terms'),
-                    'status': request.form.get('psc_status'),
-                    'constraints': request.form.get('psc_constraints')
-                }
-                services = session.get('services', [])
-                services.append(entry)
-                session['services'] = services
-                flash("Subcontracting of Commercial Services entry added successfully.")
-            return render_template('procurement.html',
-                                   use_goods=session.get('use_goods'),
-                                   use_services=session.get('use_services'),
-                                   no_procurement=session.get('no_procurement'),
-                                   goods=session.get('goods', []),
-                                   services=session.get('services', []))
-    return render_template('procurement.html',
-                           use_goods=session.get('use_goods'),
-                           use_services=session.get('use_services'),
-                           no_procurement=session.get('no_procurement'),
-                           goods=session.get('goods', []),
-                           services=session.get('services', []))
-
-
-
-@app.route('/edit_procurement/<type>/<int:index>', methods=['GET', 'POST'])
-def edit_procurement(type, index):
-    if type == 'goods':
-        entries = session.get('goods', [])
-    elif type == 'services':
-        entries = session.get('services', [])
-    else:
-        flash('Invalid procurement type.')
-        return redirect(url_for('procurement'))
-    
-    if request.method == 'POST':
-        if type == 'goods':
-            entry = entries[index]
-            entry['project_activity'] = request.form.get('pog_project_activity')
-            entry['required_good'] = request.form.get('pog_required_good')
-            entry['unit_measure'] = request.form.get('pog_unit_measure')
-            entry['estimated_qty'] = int(request.form.get('pog_estimated_qty'))
-            entry['unit_price'] = int(request.form.get('pog_unit_price'))
-            entry['estimated_total_cost'] = int(request.form.get('pog_estimated_total_cost'))
-            entry['procurement_method'] = request.form.get('pog_procurement_method')
-            # Convert month names to numbers using datetime.strptime
-            launch_year = request.form.get('pog_tender_launch_year')
-            launch_month = request.form.get('pog_tender_launch_month')
-            launch_day = request.form.get('pog_tender_launch_day')
-            award_year = request.form.get('pog_contract_award_year')
-            award_month = request.form.get('pog_contract_award_month')
-            award_day = request.form.get('pog_contract_award_day')
-            delivery_year = request.form.get('pog_delivery_year')
-            delivery_month = request.form.get('pog_delivery_month')
-            delivery_day = request.form.get('pog_delivery_day')
+        action = request.form.get('action', '').lower()
+        if action == 'select_types':
+            use_goods = 'use_goods' in request.form
+            use_services = 'use_services' in request.form
+            session['use_goods'] = use_goods
+            session['use_services'] = use_services
+            return redirect(url_for('procurement'))
+        elif action == 'add_goods':
             try:
-                entry['tender_launch_date'] = f"{launch_year}-{datetime.strptime(launch_month, '%B').month:02d}-{int(launch_day):02d}"
-                entry['contract_award_date'] = f"{award_year}-{datetime.strptime(award_month, '%B').month:02d}-{int(award_day):02d}"
-                entry['delivery_date'] = f"{delivery_year}-{datetime.strptime(delivery_month, '%B').month:02d}-{int(delivery_day):02d}"
-            except Exception as e:
-                flash("Error in processing date fields: " + str(e))
-                return render_template('edit_procurement.html', type=type, index=index, entry=entry)
-            # Process additional fields if any (e.g., final destination, status, constraints)
-            entry['final_destination_terms'] = request.form.get('pog_final_destination_terms')
-            entry['status'] = request.form.get('pog_status')
-            entry['constraints'] = request.form.get('pog_constraints')
-        elif type == 'services':
-            # Handle services similarly with field names prefixed by "psc_"
-            entry = entries[index]
-            entry['project_activity'] = request.form.get('psc_project_activity')
-            entry['service_description'] = request.form.get('psc_service_description')
-            entry['unit_measure'] = request.form.get('psc_unit_measure')
-            entry['estimated_qty'] = int(request.form.get('psc_estimated_qty'))
-            entry['unit_price'] = int(request.form.get('psc_unit_price'))
-            entry['estimated_total_cost'] = int(request.form.get('psc_estimated_total_cost'))
-            entry['procurement_method'] = request.form.get('psc_procurement_method')
-            psc_launch_year = request.form.get('psc_tender_launch_year')
-            psc_launch_month = request.form.get('psc_tender_launch_month')
-            psc_launch_day = request.form.get('psc_tender_launch_day')
-            psc_award_year = request.form.get('psc_contract_award_year')
-            psc_award_month = request.form.get('psc_contract_award_month')
-            psc_award_day = request.form.get('psc_contract_award_day')
-            psc_delivery_year = request.form.get('psc_delivery_year')
-            psc_delivery_month = request.form.get('psc_delivery_month')
-            psc_delivery_day = request.form.get('psc_delivery_day')
+                dt_tender = datetime(int(request.form.get('pog_tender_launch_year')),
+                                     list(calendar.month_name).index(request.form.get('pog_tender_launch_month')),
+                                     int(request.form.get('pog_tender_launch_day')))
+                dt_award = datetime(int(request.form.get('pog_contract_award_year')),
+                                    list(calendar.month_name).index(request.form.get('pog_contract_award_month')),
+                                    int(request.form.get('pog_contract_award_day')))
+                dt_delivery = datetime(int(request.form.get('pog_delivery_year')),
+                                       list(calendar.month_name).index(request.form.get('pog_delivery_month')),
+                                       int(request.form.get('pog_delivery_day')))
+            except ValueError:
+                flash("Invalid date for Procurement of Goods. Please check the day/month/year.")
+                return redirect(url_for('procurement'))
+            if not (dt_tender <= dt_award <= dt_delivery):
+                flash("Tender Launch, Contract Award, and Delivery dates must be in order (Tender ≤ Award ≤ Delivery).")
+                return redirect(url_for('procurement'))
+            row = {
+                "project_activity": request.form.get("pog_project_activity", "").strip(),
+                "required_good": request.form.get("pog_required_good", "").strip(),
+                "unit_measure": request.form.get("pog_unit_measure", "").strip(),
+                "estimated_qty": request.form.get("pog_estimated_qty", "").strip(),
+                "unit_price": request.form.get("pog_unit_price", "").strip(),
+                "estimated_total_cost": request.form.get("pog_estimated_total_cost", "").strip(),
+                "procurement_method": request.form.get("pog_procurement_method", "").strip(),
+                "tender_launch_date": dt_tender.strftime("%Y-%m-%d"),
+                "contract_award_date": dt_award.strftime("%Y-%m-%d"),
+                "delivery_date": dt_delivery.strftime("%Y-%m-%d"),
+                "final_destination_terms": request.form.get("pog_final_destination_terms", "").strip(),
+                "status": request.form.get("pog_status", "").strip(),
+                "constraints": request.form.get("pog_constraints", "").strip()
+            }
+            session['goods'].append(row)
+            flash("Procurement of Goods entry added.")
+            return redirect(url_for('procurement'))
+        elif action == 'delete_goods':
             try:
-                entry['tender_launch_date'] = f"{psc_launch_year}-{datetime.strptime(psc_launch_month, '%B').month:02d}-{int(psc_launch_day):02d}"
-                entry['contract_award_date'] = f"{psc_award_year}-{datetime.strptime(psc_award_month, '%B').month:02d}-{int(psc_award_day):02d}"
-                entry['delivery_date'] = f"{psc_delivery_year}-{datetime.strptime(psc_delivery_month, '%B').month:02d}-{int(psc_delivery_day):02d}"
-            except Exception as e:
-                flash("Error in processing date fields for services: " + str(e))
-                return render_template('edit_procurement.html', type=type, index=index, entry=entry)
-            entry['final_destination_terms'] = request.form.get('psc_final_destination_terms')
-            entry['status'] = request.form.get('psc_status')
-            entry['constraints'] = request.form.get('psc_constraints')
-        session.modified = True
-        flash('Procurement entry updated successfully.')
-        return redirect(url_for('procurement'))
+                idx = int(request.form.get('delete_goods_index', ''))
+                goods_list = session['goods']
+                if 0 <= idx < len(goods_list):
+                    goods_list.pop(idx)
+                    session['goods'] = goods_list
+                    flash("Procurement of Goods entry deleted.")
+                else:
+                    flash("Invalid goods index to delete.")
+            except ValueError:
+                flash("Invalid goods index to delete.")
+            return redirect(url_for('procurement'))
+        elif action == 'add_services':
+            try:
+                dt_tender = datetime(int(request.form.get('scs_tender_launch_year')),
+                                     list(calendar.month_name).index(request.form.get('scs_tender_launch_month')),
+                                     int(request.form.get('scs_tender_launch_day')))
+                dt_award = datetime(int(request.form.get('scs_contract_award_year')),
+                                    list(calendar.month_name).index(request.form.get('scs_contract_award_month')),
+                                    int(request.form.get('scs_contract_award_day')))
+                dt_delivery = datetime(int(request.form.get('scs_delivery_year')),
+                                       list(calendar.month_name).index(request.form.get('scs_delivery_month')),
+                                       int(request.form.get('scs_delivery_day')))
+            except ValueError:
+                flash("Invalid date for Subcontracting of Commercial Services. Please check the day/month/year.")
+                return redirect(url_for('procurement'))
+            if not (dt_tender <= dt_award <= dt_delivery):
+                flash("Tender Launch, Contract Award, and Delivery dates must be in order for Services.")
+                return redirect(url_for('procurement'))
+            row = {
+                "project_activity": request.form.get("scs_project_activity", "").strip(),
+                "required_service": request.form.get("scs_required_service", "").strip(),
+                "estimated_number_of_contracts": request.form.get("scs_estimated_number_of_contracts", "").strip(),
+                "unit_price": request.form.get("scs_unit_price", "").strip(),
+                "estimated_total_cost": request.form.get("scs_estimated_total_cost", "").strip(),
+                "procurement_method": request.form.get("scs_procurement_method", "").strip(),
+                "tender_launch_date": dt_tender.strftime("%Y-%m-%d"),
+                "contract_award_date": dt_award.strftime("%Y-%m-%d"),
+                "delivery_date": dt_delivery.strftime("%Y-%m-%d"),
+                "status": request.form.get("scs_status", "").strip(),
+                "constraints": request.form.get("scs_constraints", "").strip()
+            }
+            session['services'].append(row)
+            flash("Subcontracting Services entry added.")
+            return redirect(url_for('procurement'))
+        elif action == 'delete_services':
+            try:
+                idx = int(request.form.get('delete_services_index', ''))
+                services_list = session['services']
+                if 0 <= idx < len(services_list):
+                    services_list.pop(idx)
+                    session['services'] = services_list
+                    flash("Subcontracting Services entry deleted.")
+                else:
+                    flash("Invalid services index to delete.")
+            except ValueError:
+                flash("Invalid services index to delete.")
+            return redirect(url_for('procurement'))
+        elif action in ['finalize', 'finalize_procurement', 'proceed']:
+            use_goods = session.get('use_goods', False)
+            use_services = session.get('use_services', False)
+            if use_goods and len(session['goods']) == 0:
+                flash("You indicated procurement of goods, but have not added any. Please add or uncheck.")
+                return redirect(url_for('procurement'))
+            if use_services and len(session['services']) == 0:
+                flash("You indicated subcontracting of services, but have not added any. Please add or uncheck.")
+                return redirect(url_for('procurement'))
+            flash("Procurement finalized. Now you can review all data before generating tables.")
+            return redirect(url_for('review'))
+        else:
+            flash("Unknown action in procurement.")
+            return redirect(url_for('procurement'))
     else:
-        return render_template('edit_procurement.html', type=type, index=index, entry=entries[index])
+        use_goods = session.get('use_goods', False)
+        use_services = session.get('use_services', False)
+        goods_list = session.get('goods', [])
+        services_list = session.get('services', [])
+        years = list(range(2020, 2051))  # Updated year range 2020 to 2050
+        months = list(calendar.month_name)[1:]
+        days = list(range(1, 32))
+        return render_template('procurement.html',
+                               use_goods=use_goods,
+                               use_services=use_services,
+                               goods=goods_list,
+                               services=services_list,
+                               years=years,
+                               months=months,
+                               days=days,
+                               back_url=url_for('activities'))
 
-@app.route('/delete_procurement/<type>/<int:index>', methods=['GET'])
-def delete_procurement(type, index):
-    if type == 'goods':
-        goods = session.get('goods', [])
-        if 0 <= index < len(goods):
-            goods.pop(index)
-            session['goods'] = goods
-            flash("Goods procurement entry deleted successfully.")
-    elif type == 'services':
-        services = session.get('services', [])
-        if 0 <= index < len(services):
-            services.pop(index)
-            session['services'] = services
-            flash("Services procurement entry deleted successfully.")
-    else:
-        flash("Invalid procurement type.")
-    return redirect(url_for('procurement'))
+
 
 
 @app.route('/review', methods=['GET', 'POST'])
