@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Output Budget Entry</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <!-- Bootstrap Icons (optional, remove if not used) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+
+  <style>
+    .sticky-summary {
+      position: sticky;
+      top: 20px;
+      padding: 10px;
+      background-color: #f8f9fa;
+      border: 1px solid #ddd;
+    }
+    .budget-category {
+      position: relative;
+      margin-bottom: 1rem;
+      padding: 1rem;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    .delete-btn {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+    }
+    .toggle-btn {
+      position: absolute;
+      top: 5px;
+      right: 70px;
+    }
+  </style>
+
+  <script>
+    var numYears = {{ num_years }};
+
+    function updateBudgetRow(outputIndex, categoryIndex, numYears) {
+      const totalElem = document.getElementById(`total_cost_${outputIndex}_${categoryIndex}`);
+      const totalAllocatedElem = document.getElementById(`total_allocated_${outputIndex}_${categoryIndex}`);
+      const remainingTotalElem = document.getElementById(`remaining_total_${outputIndex}_${categoryIndex}`);
+      const noUnitsElem = document.getElementsByName(`no_units_${outputIndex}_${categoryIndex}`)[0];
+      const unitCostElem = document.getElementsByName(`unit_cost_${outputIndex}_${categoryIndex}`)[0];
+
+      const noUnits = parseFloat(noUnitsElem?.value) || 0;
+      const unitCost = parseFloat(unitCostElem?.value) || 0;
+      const totalCost = noUnits * unitCost;
+      if (totalElem) totalElem.value = totalCost.toFixed(0);
+
+      let sumYear = 0;
+      for (let k = 1; k <= numYears; k++) {
+        const yearElem = document.getElementsByName(`year_${outputIndex}_${categoryIndex}_${k}`)[0];
+        const alloc = parseFloat(yearElem?.value) || 0;
+        sumYear += alloc;
+      }
+      if (totalAllocatedElem) totalAllocatedElem.value = sumYear.toFixed(0);
+
+      const remaining = totalCost - sumYear;
+      if (remainingTotalElem) remainingTotalElem.value = remaining.toFixed(0);
+
+      updateSummary();
+    }
+
+    function updateSummary() {
+      let totalUsed = 0;
+      const costElems = document.getElementsByClassName("total-cost");
+      for (let i = 0; i < costElems.length; i++) {
+        totalUsed += parseFloat(costElems[i].value) || 0;
+      }
+      const opaValue = parseFloat(document.getElementById("summary_opa").innerText) || 0;
+      document.getElementById("summary_used").innerText = totalUsed.toFixed(0);
+      document.getElementById("summary_remaining").innerText = (opaValue - totalUsed).toFixed(0);
+    }
+
+    function toggleCategoryEdit(outputIndex, catIndex) {
+      const catDiv = document.getElementById(`category_${outputIndex}_${catIndex}`);
+      const currentState = catDiv.getAttribute("data-state");
+      const toggleBtn = catDiv.querySelector(".toggle-btn");
+      const inputs = catDiv.querySelectorAll("input, select, textarea");
+
+      if (currentState === "edit") {
+        catDiv.setAttribute("data-state", "closed");
+        toggleBtn.textContent = "Edit";
+        inputs.forEach(el => { if(el.type !== "button") el.disabled = true; });
+      } else {
+        catDiv.setAttribute("data-state", "edit");
+        toggleBtn.textContent = "Lock";
+        inputs.forEach(el => { if(el.type !== "button") el.disabled = false; });
+      }
+    }
+
+    function addCategory(outputIndex, numYears) {
+      const container = document.getElementById(`budget_container_${outputIndex}`);
+      const currentCount = container.getElementsByClassName("budget-category").length;
+      const newIndex = currentCount;
+      const div = document.createElement('div');
+      div.className = "budget-category";
+      div.id = `category_${outputIndex}_${newIndex}`;
+      div.setAttribute("data-state", "edit");
+
+      div.innerHTML = `
+        <button type="button" class="btn btn-danger btn-sm delete-btn" onclick="deleteCategory(${outputIndex}, ${newIndex})">Delete</button>
+        <button type="button" class="btn btn-warning btn-sm toggle-btn" onclick="toggleCategoryEdit(${outputIndex}, ${newIndex})">Lock</button>
+        <h5>Budget Category ${newIndex+1}</h5>
+        <div class="form-row">
+          <div class="form-group col-md-3">
+            <label>FAO Cost Category</label>
+            <select name="fao_${outputIndex}_${newIndex}" class="form-control" required>
+              <option value="">Select Category</option>
+              <option value="5011 Salaries professionals">5011 Salaries professionals</option>
+              <option value="5012 GS Salaries">5012 GS Salaries</option>
+              <option value="5013 Consultants">5013 Consultants</option>
+              <option value="5650 Contracts">5650 Contracts</option>
+              <option value="5021 Travel">5021 Travel</option>
+              <option value="5023 Training">5023 Training</option>
+              <option value="5024 Expendable procurement">5024 Expendable procurement</option>
+              <option value="6100 Non-expendable procurement">6100 Non-expendable procurement</option>
+              <option value="5028 GOE budget">5028 GOE budget</option>
+            </select>
+          </div>
+          <div class="form-group col-md-3">
+            <label>Budget Title</label>
+            <input type="text" name="title_${outputIndex}_${newIndex}" class="form-control" required>
+          </div>
+          <div class="form-group col-md-2">
+            <label>Budget Unit</label>
+            <input type="text" name="unit_${outputIndex}_${newIndex}" class="form-control" required>
+          </div>
+          <div class="form-group col-md-2">
+            <label>Number of Units</label>
+            <input type="number" name="no_units_${outputIndex}_${newIndex}" class="form-control" min="0" required
+                   oninput="updateBudgetRow(${outputIndex}, ${newIndex}, numYears)">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group col-md-2">
+            <label>Unit Cost (USD)</label>
+            <input type="number" name="unit_cost_${outputIndex}_${newIndex}" class="form-control" min="0" step="0.01" required
+                   oninput="updateBudgetRow(${outputIndex}, ${newIndex}, numYears)">
+          </div>
+          <div class="form-group col-md-2">
+            <label>Total Cost (USD)</label>
+            <input type="text" id="total_cost_${outputIndex}_${newIndex}" class="form-control total-cost" readonly>
+          </div>
+          <div class="form-group col-md-2">
+            <label>Total Allocated (USD)</label>
+            <input type="text" id="total_allocated_${outputIndex}_${newIndex}" class="form-control" readonly>
+          </div>
+          <div class="form-group col-md-2">
+            <label>Remaining Total (USD)</label>
+            <input type="text" id="remaining_total_${outputIndex}_${newIndex}" class="form-control" readonly>
+          </div>
+        </div>
+      `;
+
+      // Now add the per-year inputs:
+      const yearBudgetDiv = document.createElement('div');
+      yearBudgetDiv.className = "form-row";
+      for (let k = 1; k <= numYears; k++) {
+        const col = document.createElement('div');
+        col.className = "form-group col-md-2";
+        col.innerHTML = `
+          <label>Year ${k} ({{ general_info.year_eod|int }} + ${k - 1}) Budget</label>
+          <input type="number" name="year_${outputIndex}_${newIndex}_${k}" class="form-control"
+                 min="0" step="0.01"
+                 oninput="updateBudgetRow(${outputIndex}, ${newIndex}, numYears)">
+        `;
+        yearBudgetDiv.appendChild(col);
+      }
+      div.appendChild(yearBudgetDiv);
+
+      container.insertAdjacentElement('beforeend', div);
+      updateSummary();
+    }
+
+    function deleteCategory(outputIndex, catIndex) {
+      const container = document.getElementById(`budget_container_${outputIndex}`);
+      const catDiv = document.getElementById(`category_${outputIndex}_${catIndex}`);
+      if (!catDiv) return;
+
+      // If you truly never want to allow all categories to be deleted, uncomment:
+      // const categories = container.getElementsByClassName("budget-category");
+      // if (categories.length <= 1) {
+      //   alert("You cannot delete the only budget category for this output.");
+      //   return;
+      // }
+
+      container.removeChild(catDiv);
+      updateSummary();
+    }
+
+    function validateBudgetForm() {
+      const opaValue = parseFloat(document.getElementById("summary_opa").innerText) || 0;
+      let totalUsed = 0;
+      const costElems = document.getElementsByClassName("total-cost");
+      for (let i = 0; i < costElems.length; i++) {
+        totalUsed += parseFloat(costElems[i].value) || 0;
+      }
+      // If you want to force matching OPA value exactly:
+      // if (Math.abs(totalUsed - opaValue) > 0.001) {
+      //   alert(`The total used budget (${totalUsed.toFixed(0)}) does not match the OPA Value (${opaValue}). Please adjust.`);
+      //   return false;
+      // }
+
+      const categories = document.getElementsByClassName("budget-category");
+      for (let c = 0; c < categories.length; c++) {
+        const totalCostElem = categories[c].querySelector(".total-cost");
+        const totalAllocatedElem = categories[c].querySelector("[id^='total_allocated_']");
+        if (!totalCostElem || !totalAllocatedElem) continue;
+        const tCost = parseFloat(totalCostElem.value) || 0;
+        const tAlloc = parseFloat(totalAllocatedElem.value) || 0;
+        if (tCost > 0 && Math.abs(tAlloc - tCost) > 0.001) {
+          alert("A budget category has a mismatch between total cost and allocated amount. Please fix.");
+          return false;
+        }
+      }
+      return true;
+    }
+
+    window.onload = function() {
+      updateSummary();
+      var categories = document.getElementsByClassName("budget-category");
+      for (var i = 0; i < categories.length; i++) {
+        var parts = categories[i].id.split("_");
+        if (parts.length >= 3) {
+          var outIdx = parts[1];
+          var catIdx = parts[2];
+          updateBudgetRow(outIdx, catIdx, numYears);
+        }
+      }
+    }
+  </script>
+</head>
+
+<body class="p-4">
+  <!-- Hidden template (optional if you prefer the JS approach in addCategory) -->
+  <div id="year-budget-template" style="display:none;">
+    <div class="form-row">
+      {% for k in range(1, num_years+1) %}
+      <div class="form-group col-md-2">
+        <label>Year {{ k }} ({{ general_info.year_eod|int + k - 1 }}) Budget</label>
+        <input type="number"
+               name="year_OUTPUTINDEX_CATEGORYINDEX_{{ k }}"
+               class="form-control"
+               min="0"
+               step="0.01"
+               oninput="updateBudgetRow(OUTPUTINDEXPLACEHOLDER, CATEGORYINDEXPLACEHOLDER, {{ num_years }})">
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="container-fluid">
+    <div class="row">
+      <!-- Main Budget Form -->
+      <div class="col-md-9">
+        <h2>Output Budget Entry</h2>
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <div class="alert alert-warning">
+              {% for message in messages %}
+                {{ message }}<br>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        <form action="{{ url_for('output_budget') }}" method="POST" onsubmit="return validateBudgetForm();">
+          {% for outcome_idx, output_list in outputs_by_outcome.items() %}
+          <div class="card mb-3">
+            <div class="card-header">
+              Outcome {{ outcome_idx+1 }}:
+              {% if outcomes|length > outcome_idx %}
+                {{ outcomes[outcome_idx]['description'] }}
+              {% else %}
+                N/A
+              {% endif %}
+            </div>
+            <div class="card-body">
+              {% for (i, output) in output_list %}
+              <div class="border p-2 mb-2">
+                <h5>Output {{ output.number }}: {{ output.description }}</h5>
+                <!-- Hidden field for output index -->
+                <input type="hidden" name="output_index" value="{{ i }}">
+                <div id="budget_container_{{ i }}">
+                  {% if output_budgets[i|string] is defined and output_budgets[i|string] %}
+                    {% for entry in output_budgets[i|string] %}
+                      {% set catIndex = loop.index0 %}
+                      <div class="budget-category" id="category_{{ i }}_{{ catIndex }}" data-state="edit">
+                        <button type="button" class="btn btn-danger btn-sm delete-btn" onclick="deleteCategory({{ i }}, {{ catIndex }})">Delete</button>
+                        <button type="button" class="btn btn-warning btn-sm toggle-btn" onclick="toggleCategoryEdit({{ i }}, {{ catIndex }})">Lock</button>
+                        <h5>Budget Category {{ loop.index }}</h5>
+
+                        <div class="form-row">
+                          <div class="form-group col-md-3">
+                            <label>FAO Cost Category</label>
+                            <select name="fao_{{ i }}_{{ catIndex }}" class="form-control" required>
+                              <option value="">Select Category</option>
+                              <option value="5011 Salaries professionals" {% if entry.fao_category == "5011 Salaries professionals" %}selected{% endif %}>5011 Salaries professionals</option>
+                              <option value="5012 GS Salaries" {% if entry.fao_category == "5012 GS Salaries" %}selected{% endif %}>5012 GS Salaries</option>
+                              <option value="5013 Consultants" {% if entry.fao_category == "5013 Consultants" %}selected{% endif %}>5013 Consultants</option>
+                              <option value="5650 Contracts" {% if entry.fao_category == "5650 Contracts" %}selected{% endif %}>5650 Contracts</option>
+                              <option value="5021 Travel" {% if entry.fao_category == "5021 Travel" %}selected{% endif %}>5021 Travel</option>
+                              <option value="5023 Training" {% if entry.fao_category == "5023 Training" %}selected{% endif %}>5023 Training</option>
+                              <option value="5024 Expendable procurement" {% if entry.fao_category == "5024 Expendable procurement" %}selected{% endif %}>5024 Expendable procurement</option>
+                              <option value="6100 Non-expendable procurement" {% if entry.fao_category == "6100 Non-expendable procurement" %}selected{% endif %}>6100 Non-expendable procurement</option>
+                              <option value="5028 GOE budget" {% if entry.fao_category == "5028 GOE budget" %}selected{% endif %}>5028 GOE budget</option>
+                            </select>
+                          </div>
+                          <div class="form-group col-md-3">
+                            <label>Budget Title</label>
+                            <input type="text" name="title_{{ i }}_{{ catIndex }}" class="form-control" value="{{ entry.budget_title }}" required>
+                          </div>
+                          <div class="form-group col-md-2">
+                            <label>Budget Unit</label>
+                            <input type="text" name="unit_{{ i }}_{{ catIndex }}" class="form-control" value="{{ entry.budget_unit }}" required>
+                          </div>
+                          <div class="form-group col-md-2">
+                            <label>Number of Units</label>
+                            <input type="number" name="no_units_{{ i }}_{{ catIndex }}" class="form-control" value="{{ entry.no_of_units }}" min="0" required
+                                   oninput="updateBudgetRow({{ i }}, {{ catIndex }}, {{ num_years }})">
+                          </div>
+                        </div>
+
+                        <div class="form-row">
+                          <div class="form-group col-md-2">
+                            <label>Unit Cost (USD)</label>
+                            <input type="number" name="unit_cost_{{ i }}_{{ catIndex }}" class="form-control" value="{{ entry.unit_cost }}" min="0" step="0.01" required
+                                   oninput="updateBudgetRow({{ i }}, {{ catIndex }}, {{ num_years }})">
+                          </div>
+                          <div class="form-group col-md-2">
+                            <label>Total Cost (USD)</label>
+                            <input type="text" id="total_cost_{{ i }}_{{ catIndex }}" class="form-control total-cost" value="{{ entry.total_cost }}" readonly>
+                          </div>
+                          <div class="form-group col-md-2">
+                            <label>Total Allocated (USD)</label>
+                            <input type="text" id="total_allocated_{{ i }}_{{ catIndex }}" class="form-control" readonly>
+                          </div>
+                          <div class="form-group col-md-2">
+                            <label>Remaining Total (USD)</label>
+                            <input type="text" id="remaining_total_{{ i }}_{{ catIndex }}" class="form-control" readonly>
+                          </div>
+                        </div>
+
+                        <!-- Year budgets -->
+                        <div class="form-row">
+                          {% for k in range(1, num_years+1) %}
+                          <div class="form-group col-md-2">
+                            <label>Year {{ k }} ({{ general_info.year_eod|int + k - 1 }}) Budget</label>
+                            <input type="number" name="year_{{ i }}_{{ catIndex }}_{{ k }}" class="form-control"
+                                   value="{{ entry.year_allocations[k-1] if entry.year_allocations|length >= k else '' }}"
+                                   min="0" step="0.01"
+                                   oninput="updateBudgetRow({{ i }}, {{ catIndex }}, {{ num_years }})">
+                          </div>
+                          {% endfor %}
+                        </div>
+                      </div>
+                    {% endfor %}
+                    <!-- Add Another Category button inside the output box -->
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="addCategory({{ i }}, {{ num_years }})">Add Another Category</button>
+                  {% else %}
+                    <!-- If no categories exist yet, show a default block with all fields + calculation row -->
+                    <div class="budget-category" id="category_{{ i }}_0" data-state="edit">
+                      <button type="button" class="btn btn-danger btn-sm delete-btn" onclick="deleteCategory({{ i }}, 0)">Delete</button>
+                      <button type="button" class="btn btn-warning btn-sm toggle-btn ml-2" onclick="toggleCategoryEdit({{ i }}, 0)">Lock</button>
+                      <h5>Budget Category 1</h5>
+
+                      <div class="form-row">
+                        <div class="form-group col-md-3">
+                          <label>FAO Cost Category</label>
+                          <select name="fao_{{ i }}_0" class="form-control" required>
+                            <option value="">Select Category</option>
+                            <option value="5011 Salaries professionals">5011 Salaries professionals</option>
+                            <option value="5012 GS Salaries">5012 GS Salaries</option>
+                            <option value="5013 Consultants">5013 Consultants</option>
+                            <option value="5650 Contracts">5650 Contracts</option>
+                            <option value="5021 Travel">5021 Travel</option>
+                            <option value="5023 Training">5023 Training</option>
+                            <option value="5024 Expendable procurement">5024 Expendable procurement</option>
+                            <option value="6100 Non-expendable procurement">6100 Non-expendable procurement</option>
+                            <option value="5028 GOE budget">5028 GOE budget</option>
+                          </select>
+                        </div>
+                        <div class="form-group col-md-3">
+                          <label>Budget Title</label>
+                          <input type="text" name="title_{{ i }}_0" class="form-control" required>
+                        </div>
+                        <div class="form-group col-md-2">
+                          <label>Budget Unit</label>
+                          <input type="text" name="unit_{{ i }}_0" class="form-control" required>
+                        </div>
+                        <div class="form-group col-md-2">
+                          <label>Number of Units</label>
+                          <input type="number" name="no_units_{{ i }}_0" class="form-control" min="0" required
+                                 oninput="updateBudgetRow({{ i }}, 0, {{ num_years }})">
+                        </div>
+                        <div class="form-group col-md-2">
+                          <label>Unit Cost (USD)</label>
+                          <input type="number" name="unit_cost_{{ i }}_0" class="form-control" min="0" step="0.01" required
+                                 oninput="updateBudgetRow({{ i }}, 0, {{ num_years }})">
+                        </div>
+                      </div>
+
+                      <!-- Row for total cost calculations -->
+                      <div class="form-row">
+                        <div class="form-group col-md-2">
+                          <label>Total Cost (USD)</label>
+                          <input type="text" id="total_cost_{{ i }}_0" class="form-control total-cost" readonly>
+                        </div>
+                        <div class="form-group col-md-2">
+                          <label>Total Allocated (USD)</label>
+                          <input type="text" id="total_allocated_{{ i }}_0" class="form-control" readonly>
+                        </div>
+                        <div class="form-group col-md-2">
+                          <label>Remaining Total (USD)</label>
+                          <input type="text" id="remaining_total_{{ i }}_0" class="form-control" readonly>
+                        </div>
+                      </div>
+
+                      <!-- Year budgets with oninput -->
+                      <div class="form-row">
+                        {% for k in range(1, num_years+1) %}
+                        <div class="form-group col-md-2">
+                          <label>Year {{ k }} ({{ general_info.year_eod|int + k - 1 }}) Budget</label>
+                          <input type="number" name="year_{{ i }}_0_{{ k }}" class="form-control"
+                                 min="0" step="0.01"
+                                 oninput="updateBudgetRow({{ i }}, 0, {{ num_years }})">
+                        </div>
+                        {% endfor %}
+                      </div>
+                    </div>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="addCategory({{ i }}, {{ num_years }})">Add Another Category</button>
+                  {% endif %}
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+
+          <div class="form-group text-center">
+            <!-- Back button with << -->
+            <a href="{{ url_for('outputs') }}"
+               class="btn btn-warning"
+               formnovalidate>&laquo; Back</a>
+            <button type="submit" name="action" value="next" class="btn btn-success">
+              No More Budget and Next &raquo;
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Budget Summary Sidebar -->
+      <div class="col-md-3">
+        <div class="sticky-summary">
+          <h4>Budget Summary</h4>
+          <p>OPA Value: <span id="summary_opa">{{ general_info.opa_value|default(0) }}</span> USD</p>
+          <p>Total Used: <span id="summary_used">0</span> USD</p>
+          <p>Remaining: <span id="summary_remaining">0</span> USD</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

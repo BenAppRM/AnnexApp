@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Outcome Entry</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <script>
+    function removeRequired() {
+      document.querySelectorAll("input, textarea, select").forEach(function(el) {
+        el.removeAttribute("required");
+      });
+    }
+  </script>
+</head>
+<body class="p-4">
+  <div class="container">
+    <h2>Outcome Entry</h2>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+      <div class="alert alert-info">
+        {% for message in messages %}
+          {{ message }}<br>
+        {% endfor %}
+      </div>
+      {% endif %}
+    {% endwith %}
+    <form action="{{ url_for('outcomes') }}" method="POST">
+      <div class="form-group">
+        <label>Outcome Description:</label>
+        <textarea name="outcome_desc" class="form-control" placeholder="Enter outcome description" required>{{ request.form.outcome_desc or '' }}</textarea>
+      </div>
+      <div class="form-group">
+        <label>Performance Indicators:</label>
+        <textarea name="pi" class="form-control" placeholder="Enter performance indicators" required>{{ request.form.pi or '' }}</textarea>
+      </div>
+      <div class="form-group">
+        <label>Baseline:</label>
+        <input type="text" name="baseline" class="form-control" placeholder="Enter baseline" value="{{ request.form.baseline or '' }}" required>
+      </div>
+      <div class="form-group">
+        <label>Target:</label>
+        <input type="text" name="target" class="form-control" placeholder="Enter target" value="{{ request.form.target or '' }}" required>
+      </div>
+      <div class="form-group">
+        <label>Means of Verification:</label>
+        <input type="text" name="mov" class="form-control" placeholder="Enter means of verification" value="{{ request.form.mov or '' }}" required>
+      </div>
+      <div class="form-group">
+        <label>Assumptions:</label>
+        <textarea name="assumptions" class="form-control" placeholder="Enter assumptions" required>{{ request.form.assumptions or '' }}</textarea>
+      </div>
+      <div class="form-group text-center">
+		<button type="submit"
+				name="action"
+				value="back"
+				class="btn btn-warning"
+				onclick="removeRequired()"
+				formnovalidate>
+		  &laquo; Back
+		</button>
+
+        <button type="submit" name="action" value="add" class="btn btn-primary">Add Outcome</button>
+        {% if outcomes|length > 0 %}
+        <button type="submit" name="action" value="next" class="btn btn-success" onclick="removeRequired()">No More Outcome and Next &raquo;</button>
+        {% else %}
+        <button type="submit" name="action" value="next" class="btn btn-success" disabled>No More Outcome and Next &raquo;</button>
+        {% endif %}
+      </div>
+    </form>
+    <hr>
+    <h4>Outcomes Entered:</h4>
+    <ul class="list-group">
+      {% for outcome in outcomes %}
+      <li class="list-group-item">
+        <strong>Outcome {{ loop.index }}:</strong> {{ outcome.description }}<br>
+        <strong>Performance Indicators:</strong> {{ outcome.pi }}<br>
+        <strong>Baseline:</strong> {{ outcome.baseline }}<br>
+        <strong>Target:</strong> {{ outcome.target }}<br>
+        <strong>MOV:</strong> {{ outcome.mov }}<br>
+        <strong>Assumptions:</strong> {{ outcome.assumptions }}<br>
+        <form action="{{ url_for('outcomes') }}" method="POST" style="display:inline;">
+          <input type="hidden" name="edit_index" value="{{ loop.index0 }}">
+          <button type="submit" name="action" value="edit" class="btn btn-sm btn-info">Edit</button>
+        </form>
+        <form action="{{ url_for('outcomes') }}" method="POST" style="display:inline;">
+          <input type="hidden" name="delete_index" value="{{ loop.index0 }}">
+          <button type="submit" name="action" value="delete" class="btn btn-sm btn-danger">Delete</button>
+        </form>
+      </li>
+      {% else %}
+      <li class="list-group-item">No outcomes added yet.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</body>
+</html>

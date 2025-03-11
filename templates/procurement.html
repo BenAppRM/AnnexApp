@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Procurement</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <style>
+    .section { margin-bottom: 2rem; }
+    .vertical-space { margin-bottom: 1rem; }
+  </style>
+  <script>
+    // Toggle checkboxes so that if "No Procurement" is checked, the other two are unchecked and disabled.
+    function toggleProcurementOptions() {
+      var noProc = document.getElementById('no_procurement');
+      var goods = document.getElementById('use_goods');
+      var services = document.getElementById('use_services');
+      if (noProc.checked) {
+        goods.checked = false;
+        services.checked = false;
+        goods.disabled = true;
+        services.disabled = true;
+      } else {
+        goods.disabled = false;
+        services.disabled = false;
+      }
+      updateButtons();
+    }
+    
+    // Enable/disable buttons based on checkbox selections.
+    function updateButtons() {
+      var goods = document.getElementById('use_goods').checked;
+      var services = document.getElementById('use_services').checked;
+      var noProc = document.getElementById('no_procurement').checked;
+      var proceedBtn = document.getElementById('proceed_button');
+      var finalizeBtn = document.getElementById('finalize_button');
+      // Proceed with Procurement is enabled if either goods or services is selected (and noProc not checked)
+      if ((goods || services) && !noProc) {
+        proceedBtn.disabled = false;
+      } else {
+        proceedBtn.disabled = true;
+      }
+      // Finalize is enabled only if "No Procurement" is checked.
+      if (noProc) {
+        finalizeBtn.disabled = false;
+      } else {
+        finalizeBtn.disabled = true;
+      }
+    }
+    
+    // Call updateButtons on page load and on checkbox changes.
+    document.addEventListener('DOMContentLoaded', updateButtons);
+    
+    // Update day options based on selected year and month (for all date fields)
+    function updateDays(yearSelectId, monthSelectId, daySelectId) {
+      var year = document.getElementById(yearSelectId).value;
+      var month = document.getElementById(monthSelectId).value;
+      var daySelect = document.getElementById(daySelectId);
+      daySelect.innerHTML = '<option value="">Day</option>';
+      if (year && month) {
+        var d = new Date(year, new Date(Date.parse(month + " 1, " + year)).getMonth() + 1, 0);
+        var days = d.getDate();
+        for (var i = 1; i <= days; i++) {
+          var opt = document.createElement('option');
+          opt.value = i;
+          opt.innerHTML = i;
+          daySelect.appendChild(opt);
+        }
+      }
+    }
+  </script>
+</head>
+<body class="p-4">
+  <div class="container">
+    <h2>Procurement</h2>
+    <div class="mb-3">
+      <a href="{{ url_for('activities') }}" class="btn btn-secondary" formnovalidate>Back to Workplan</a>
+    </div>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+      <div class="alert alert-warning">
+        {% for message in messages %}
+          {{ message }}<br>
+        {% endfor %}
+      </div>
+      {% endif %}
+    {% endwith %}
+
+    <!-- Step 1: Select Procurement Options -->
+    <div class="section">
+      <h4>Select Procurement Options</h4>
+      <form action="{{ url_for('procurement') }}" method="POST" id="options_form">
+        <input type="hidden" name="action" value="select_types">
+        <div class="form-check vertical-space">
+          <input class="form-check-input" type="checkbox" name="use_goods" id="use_goods" 
+                 {% if request.form.get('use_goods') or use_goods %}checked{% endif %} onclick="toggleProcurementOptions()">
+          <label class="form-check-label" for="use_goods">Procurement of Goods</label>
+        </div>
+        <div class="form-check vertical-space">
+          <input class="form-check-input" type="checkbox" name="use_services" id="use_services" 
+                 {% if request.form.get('use_services') or use_services %}checked{% endif %} onclick="toggleProcurementOptions()">
+          <label class="form-check-label" for="use_services">Subcontracting of Commercial Services</label>
+        </div>
+        <div class="form-check vertical-space">
+          <input class="form-check-input" type="checkbox" name="no_procurement" id="no_procurement" 
+                 {% if request.form.get('no_procurement') or no_procurement %}checked{% endif %} onclick="toggleProcurementOptions()">
+          <label class="form-check-label" for="no_procurement">No Procurement</label>
+        </div>
+        <!-- Two buttons: Proceed and Finalize -->
+        <button type="submit" name="action" value="proceed" id="proceed_button" class="btn btn-primary" disabled>Proceed with Procurement</button>
+        &nbsp;
+        <button type="submit" name="action" value="finalize" id="finalize_button" class="btn btn-success" disabled>Finalize</button>
+      </form>
+    </div>
+
+    <!-- If "Proceed with Procurement" was clicked (or checkboxes are selected), show the forms: -->
+    {% if (request.form.get('use_goods') or use_goods) or (request.form.get('use_services') or use_services) %}
+      <!-- Procurement of Goods Details Form -->
+      {% if request.form.get('use_goods') or use_goods %}
+      <div class="section">
+        <h4>Procurement of Goods Details</h4>
+        <form action="{{ url_for('procurement') }}" method="POST">
+          <input type="hidden" name="action" value="add_goods">
+          <div class="form-group vertical-space">
+            <label>Project Related Activity</label>
+            <input type="text" name="pog_project_activity" class="form-control" value="{{ request.form.get('pog_project_activity','') }}" required>
+          </div>
+          <div class="form-group vertical-space">
+            <label>Required Good (Description)</label>
+            <input type="text" name="pog_required_good" class="form-control" value="{{ request.form.get('pog_required_good','') }}" required>
+          </div>
+          <div class="form-group vertical-space">
+            <label>Unit of Measure (MT, KG, pcs)</label>
+            <input type="text" name="pog_unit_measure" class="form-control" value="{{ request.form.get('pog_unit_measure','') }}" required>
+          </div>
+          <div class="form-group vertical-space">
+            <label>Estimated Quantities Required</label>
+            <input type="number" step="1" name="pog_estimated_qty" class="form-control" value="{{ request.form.get('pog_estimated_qty','') }}" required>
+          </div>
+          <div class="form-group vertical-space">
+            <label>Unit Price (USD)</label>
+            <input type="number" step="1" name="pog_unit_price" class="form-control" value="{{ request.form.get('pog_unit_price','') }}" required>
+          </div>
+          <div class="form-group vertical-space">
+            <label>Estimated Total Cost (USD)</label>
+            <input type="number" step="1" name="pog_estimated_total_cost" class="form-control" value="{{ request.form.get('pog_estimated_total_cost','') }}" required>
+          </div>
+          <div class="form-group vertical-space">
+            <label>Procurement Method (Competitive, Direct, etc.)</label>
+            <input type="text" name="pog_procurement_method" class="form-control" value="{{ request.form.get('pog_procurement_method','') }}" required>
+          </div>
+          <!-- Date Fields for Goods -->
+          <div class="form-row vertical-space">
+            <!-- Tender Launch Date -->
+            <div class="form-group col-md-4">
+              <label>Targeted Tender Launch Date</label>
+              <select name="pog_tender_launch_year" class="form-control" required>
+                <option value="">Year</option>
+                {% for y in range(2020,2051) %}
+                <option value="{{ y }}" {% if request.form.get('pog_tender_launch_year') == y|string %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+              </select>
+              <select name="pog_tender_launch_month" class="form-control" required onchange="updateDays('pog_tender_launch_year','pog_tender_launch_month','pog_tender_launch_day')">
+                <option value="">Month</option>
+                {% for m in ['January','February','March','April','May','June','July','August','September','October','November','December'] %}
+                <option value="{{ m }}" {% if request.form.get('pog_tender_launch_month') == m %}selected{% endif %}>{{ m }}</option>
+                {% endfor %}
+              </select>
+              <select name="pog_tender_launch_day" class="form-control" required>
+                <option value="">Day</option>
+                {% if request.form.get('pog_tender_launch_day') %}
+                  {% for d in range(1,32) %}
+                  <option value="{{ d }}" {% if request.form.get('pog_tender_launch_day')|int == d %}selected{% endif %}>{{ d }}</option>
+                  {% endfor %}
+                {% else %}
+                  {% for d in range(1,32) %}
+                  <option value="{{ d }}">{{ d }}</option>
+                  {% endfor %}
+                {% endif %}
+              </select>
+            </div>
+            <!-- Contract Award Date -->
+            <div class="form-group col-md-4">
+              <label>Targeted Contract Award Date</label>
+              <select name="pog_contract_award_year" class="form-control" required>
+                <option value="">Year</option>
+                {% for y in range(2020,2051) %}
+                <option value="{{ y }}" {% if request.form.get('pog_contract_award_year') == y|string %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+              </select>
+              <select name="pog_contract_award_month" class="form-control" required onchange="updateDays('pog_contract_award_year','pog_contract_award_month','pog_contract_award_day')">
+                <option value="">Month</option>
+                {% for m in ['January','February','March','April','May','June','July','August','September','October','November','December'] %}
+                <option value="{{ m }}" {% if request.form.get('pog_contract_award_month') == m %}selected{% endif %}>{{ m }}</option>
+                {% endfor %}
+              </select>
+              <select name="pog_contract_award_day" class="form-control" required>
+                <option value="">Day</option>
+                {% if request.form.get('pog_contract_award_day') %}
+                  {% for d in range(1,32) %}
+                  <option value="{{ d }}" {% if request.form.get('pog_contract_award_day')|int == d %}selected{% endif %}>{{ d }}</option>
+                  {% endfor %}
+                {% else %}
+                  {% for d in range(1,32) %}
+                  <option value="{{ d }}">{{ d }}</option>
+                  {% endfor %}
+                {% endif %}
+              </select>
+            </div>
+            <!-- Delivery Date -->
+            <div class="form-group col-md-4">
+              <label>Targeted Delivery Date</label>
+              <select name="pog_delivery_year" class="form-control" required>
+                <option value="">Year</option>
+                {% for y in range(2020,2051) %}
+                <option value="{{ y }}" {% if request.form.get('pog_delivery_year') == y|string %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+              </select>
+              <select name="pog_delivery_month" class="form-control" required onchange="updateDays('pog_delivery_year','pog_delivery_month','pog_delivery_day')">
+                <option value="">Month</option>
+                {% for m in ['January','February','March','April','May','June','July','August','September','October','November','December'] %}
+                <option value="{{ m }}" {% if request.form.get('pog_delivery_month') == m %}selected{% endif %}>{{ m }}</option>
+                {% endfor %}
+              </select>
+              <select name="pog_delivery_day" class="form-control" required>
+                <option value="">Day</option>
+                {% if request.form.get('pog_delivery_day') %}
+                  {% for d in range(1,32) %}
+                  <option value="{{ d }}" {% if request.form.get('pog_delivery_day')|int == d %}selected{% endif %}>{{ d }}</option>
+                  {% endfor %}
+                {% else %}
+                  {% for d in range(1,32) %}
+                  <option value="{{ d }}">{{ d }}</option>
+                  {% endfor %}
+                {% endif %}
+              </select>
+            </div>
+          </div>
+          <div class="form-group vertical-space">
+            <label>Final Destination and Delivery Terms</label>
+            <input type="text" name="pog_final_destination_terms" class="form-control" value="{{ request.form.get('pog_final_destination_terms','') }}" required>
+          </div>
+          <div class="form-group vertical-space">
+            <label>Status</label>
+            <input type="text" name="pog_status" class="form-control" value="{{ request.form.get('pog_status','') }}" required>
+          </div>
+          <div class="form-group vertical-space">
+            <label>Other Constraints or Considerations</label>
+            <input type="text" name="pog_constraints" class="form-control" value="{{ request.form.get('pog_constraints','') }}" required>
+          </div>
+          <button type="submit" class="btn btn-primary">Add Procurement of Goods Entry</button>
+        </form>
+      </div>
+      {% endif %}
+      
+      <!-- Subcontracting of Commercial Services Details Form -->
+      {% if request.form.get('use_services') or use_services %}
+      <div class="section">
+        <h4>Subcontracting of Commercial Services Details</h4>
+        <form action="{{ url_for('procurement') }}" method="POST">
+          <input type="hidden" name="action" value="add_services">
+          <div class="form-group vertical-space">
+            <label>Project Related Activity</label>
+            <input type="text" name="psc_project_activity" class="form-control" value="{{ request.form.get('psc_project_activity','') }}" required>
+          </div>
+          <div class="form-group vertical-space">
+            <label>Service Description</label>
+            <input type="text" name="psc_service_description" class="form-control" value="{{ request.form.get('psc_service_description','') }}" required>
+          </div>
+          <div class="form-group vertical-space">
+            <label>Unit of Measure</label>
+            <input type="text" name="psc_unit_measure" class="form-control" value="{{ request.form.get('psc_unit_measure','') }}" required>
+          </div>
+          <div class="form-group vertical-space">
+            <label>Estimated Quantities Required</label>
+            <input type="number" step="1" name="psc_estimated_qty" class="form-control" value="{{ request.form.get('psc_estimated_qty','') }}" required>
+          </div>
+          <div class="form-group vertical-space">
+            <label>Unit Price (USD)</label>
+            <input type="number" step="1" name="psc_unit_price" class="form-control" value="{{ request.form.get('psc_unit_price','') }}" required>
+          </div>
+          <div class="form-group vertical-space">
+            <label>Estimated Total Cost (USD)</label>
+            <input type="number" step="1" name="psc_estimated_total_cost" class="form-control" value="{{ request.form.get('psc_estimated_total_cost','') }}" required>
+          </div>
+          <div class="form-group vertical-space">
+            <label>Procurement Method</label>
+            <input type="text" name="psc_procurement_method" class="form-control" value="{{ request.form.get('psc_procurement_method','') }}" required>
+          </div>
+          <!-- Date Fields for Services -->
+          <div class="form-row vertical-space">
+            <!-- Tender Launch Date -->
+            <div class="form-group col-md-4">
+              <label>Tender Launch Date</label>
+              <select name="psc_tender_launch_year" class="form-control" required>
+                <option value="">Year</option>
+                {% for y in range(2020,2051) %}
+                <option value="{{ y }}" {% if request.form.get('psc_tender_launch_year') == y|string %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+              </select>
+              <select name="psc_tender_launch_month" class="form-control" required onchange="updateDays('psc_tender_launch_year','psc_tender_launch_month','psc_tender_launch_day')">
+                <option value="">Month</option>
+                {% for m in ['January','February','March','April','May','June','July','August','September','October','November','December'] %}
+                <option value="{{ m }}" {% if request.form.get('psc_tender_launch_month') == m %}selected{% endif %}>{{ m }}</option>
+                {% endfor %}
+              </select>
+              <select name="psc_tender_launch_day" class="form-control" required>
+                <option value="">Day</option>
+                {% if request.form.get('psc_tender_launch_day') %}
+                  {% for d in range(1,32) %}
+                  <option value="{{ d }}" {% if request.form.get('psc_tender_launch_day')|int == d %}selected{% endif %}>{{ d }}</option>
+                  {% endfor %}
+                {% else %}
+                  {% for d in range(1,32) %}
+                  <option value="{{ d }}">{{ d }}</option>
+                  {% endfor %}
+                {% endif %}
+              </select>
+            </div>
+            <!-- Contract Award Date -->
+            <div class="form-group col-md-4">
+              <label>Contract Award Date</label>
+              <select name="psc_contract_award_year" class="form-control" required>
+                <option value="">Year</option>
+                {% for y in range(2020,2051) %}
+                <option value="{{ y }}" {% if request.form.get('psc_contract_award_year') == y|string %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+              </select>
+              <select name="psc_contract_award_month" class="form-control" required onchange="updateDays('psc_contract_award_year','psc_contract_award_month','psc_contract_award_day')">
+                <option value="">Month</option>
+                {% for m in ['January','February','March','April','May','June','July','August','September','October','November','December'] %}
+                <option value="{{ m }}" {% if request.form.get('psc_contract_award_month') == m %}selected{% endif %}>{{ m }}</option>
+                {% endfor %}
+              </select>
+              <select name="psc_contract_award_day" class="form-control" required>
+                <option value="">Day</option>
+                {% if request.form.get('psc_contract_award_day') %}
+                  {% for d in range(1,32) %}
+                  <option value="{{ d }}" {% if request.form.get('psc_contract_award_day')|int == d %}selected{% endif %}>{{ d }}</option>
+                  {% endfor %}
+                {% else %}
+                  {% for d in range(1,32) %}
+                  <option value="{{ d }}">{{ d }}</option>
+                  {% endfor %}
+                {% endif %}
+              </select>
+            </div>
+            <!-- Delivery Date -->
+            <div class="form-group col-md-4">
+              <label>Delivery Date</label>
+              <select name="psc_delivery_year" class="form-control" required>
+                <option value="">Year</option>
+                {% for y in range(2020,2051) %}
+                <option value="{{ y }}" {% if request.form.get('psc_delivery_year') == y|string %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+              </select>
+              <select name="psc_delivery_month" class="form-control" required onchange="updateDays('psc_delivery_year','psc_delivery_month','psc_delivery_day')">
+                <option value="">Month</option>
+                {% for m in ['January','February','March','April','May','June','July','August','September','October','November','December'] %}
+                <option value="{{ m }}" {% if request.form.get('psc_delivery_month') == m %}selected{% endif %}>{{ m }}</option>
+                {% endfor %}
+              </select>
+              <select name="psc_delivery_day" class="form-control" required>
+                <option value="">Day</option>
+                {% if request.form.get('psc_delivery_day') %}
+                  {% for d in range(1,32) %}
+                  <option value="{{ d }}" {% if request.form.get('psc_delivery_day')|int == d %}selected{% endif %}>{{ d }}</option>
+                  {% endfor %}
+                {% else %}
+                  {% for d in range(1,32) %}
+                  <option value="{{ d }}">{{ d }}</option>
+                  {% endfor %}
+                {% endif %}
+              </select>
+            </div>
+          </div>
+          <div class="form-group vertical-space">
+            <label>Final Destination and Delivery Terms</label>
+            <input type="text" name="psc_final_destination_terms" class="form-control" value="{{ request.form.get('psc_final_destination_terms','') }}" required>
+          </div>
+          <div class="form-group vertical-space">
+            <label>Status</label>
+            <input type="text" name="psc_status" class="form-control" value="{{ request.form.get('psc_status','') }}" required>
+          </div>
+          <div class="form-group vertical-space">
+            <label>Other Constraints or Considerations</label>
+            <input type="text" name="psc_constraints" class="form-control" value="{{ request.form.get('psc_constraints','') }}" required>
+          </div>
+          <button type="submit" class="btn btn-primary">Add Subcontracting of Commercial Services Entry</button>
+        </form>
+      </div>
+      {% endif %}
+    {% endif %}
+
+    <!-- Existing Entries Display -->
+    <div class="section">
+      {% if goods and goods|length > 0 %}
+      <h4>Existing Procurement of Goods Entries</h4>
+      <ul class="list-group">
+        {% for entry in goods %}
+        <li class="list-group-item vertical-space">
+          <strong>Project Activity:</strong> {{ entry.project_activity }}<br>
+          <strong>Required Good:</strong> {{ entry.required_good }}<br>
+          <strong>Unit Measure:</strong> {{ entry.unit_measure }}<br>
+          <strong>Estimated Qty:</strong> {{ entry.estimated_qty }}<br>
+          <strong>Unit Price (USD):</strong> {{ entry.unit_price }}<br>
+          <strong>Estimated Total Cost (USD):</strong> {{ entry.estimated_total_cost }}<br>
+          <strong>Procurement Method:</strong> {{ entry.procurement_method }}<br>
+          <strong>Tender Launch Date:</strong> {{ entry.tender_launch_date }}<br>
+          <strong>Contract Award Date:</strong> {{ entry.contract_award_date }}<br>
+          <strong>Delivery Date:</strong> {{ entry.delivery_date }}<br>
+          <strong>Final Destination & Terms:</strong> {{ entry.final_destination_terms }}<br>
+          <strong>Status:</strong> {{ entry.status }}<br>
+          <strong>Constraints:</strong> {{ entry.constraints }}<br>
+          <a href="{{ url_for('edit_procurement', type='goods', index=loop.index0) }}" class="btn btn-sm btn-info">Edit</a>
+          <a href="{{ url_for('delete_procurement', type='goods', index=loop.index0) }}" class="btn btn-sm btn-danger">Delete</a>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+
+      {% if services and services|length > 0 %}
+      <h4>Existing Subcontracting of Commercial Services Entries</h4>
+      <ul class="list-group">
+        {% for entry in services %}
+        <li class="list-group-item vertical-space">
+          <strong>Project Activity:</strong> {{ entry.project_activity }}<br>
+          <strong>Service Description:</strong> {{ entry.service_description }}<br>
+          <strong>Unit Measure:</strong> {{ entry.unit_measure }}<br>
+          <strong>Estimated Qty:</strong> {{ entry.estimated_qty }}<br>
+          <strong>Unit Price (USD):</strong> {{ entry.unit_price }}<br>
+          <strong>Estimated Total Cost (USD):</strong> {{ entry.estimated_total_cost }}<br>
+          <strong>Procurement Method:</strong> {{ entry.procurement_method }}<br>
+          <strong>Tender Launch Date:</strong> {{ entry.tender_launch_date }}<br>
+          <strong>Contract Award Date:</strong> {{ entry.contract_award_date }}<br>
+          <strong>Delivery Date:</strong> {{ entry.delivery_date }}<br>
+          <strong>Final Destination & Terms:</strong> {{ entry.final_destination_terms }}<br>
+          <strong>Status:</strong> {{ entry.status }}<br>
+          <strong>Constraints:</strong> {{ entry.constraints }}<br>
+          <a href="{{ url_for('edit_procurement', type='services', index=loop.index0) }}" class="btn btn-sm btn-info">Edit</a>
+          <a href="{{ url_for('delete_procurement', type='services', index=loop.index0) }}" class="btn btn-sm btn-danger">Delete</a>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+  </div>
+</body>
+</html>

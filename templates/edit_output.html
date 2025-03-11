@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Edit Output</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body class="p-4">
+  <div class="container">
+    <h2>Edit Output</h2>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+      <div class="alert alert-warning">
+        {% for message in messages %}
+          {{ message }}<br>
+        {% endfor %}
+      </div>
+      {% endif %}
+    {% endwith %}
+    <div class="mb-3">
+      <p><strong>Outcome:</strong> Outcome {{ output.outcome_index + 1 }}:
+         {% if outcome and outcome.description %}{{ outcome.description }}{% endif %}
+      </p>
+    </div>
+    <form action="{{ url_for('edit_output', index=index) }}" method="POST">
+      <div class="form-group">
+        <label>Output Description:</label>
+        <textarea name="output_desc" class="form-control" required>{{ output.description }}</textarea>
+      </div>
+      <div class="form-group">
+        <label>Performance Indicators:</label>
+        <textarea name="pi" class="form-control" required>{{ output.pi }}</textarea>
+      </div>
+      <div class="form-group">
+        <label>Baseline:</label>
+        <input type="text" name="baseline" class="form-control" value="{{ output.baseline }}" required>
+      </div>
+      <div class="form-group">
+        <label>Target:</label>
+        <input type="text" name="target" class="form-control" value="{{ output.target }}" required>
+      </div>
+      <div class="form-group">
+        <label>Means of Verification:</label>
+        <input type="text" name="mov" class="form-control" value="{{ output.mov }}" required>
+      </div>
+      <div class="form-group">
+        <label>Assumptions:</label>
+        <textarea name="assumptions" class="form-control" required>{{ output.assumptions }}</textarea>
+      </div>
+	  <button type="submit"
+			  name="action"
+			  value="back"
+			  class="btn btn-warning"
+			  onclick="removeRequired()"
+			  formnovalidate>
+		&laquo; Back
+	  </button>
+      <button type="submit" class="btn btn-primary">Save Changes &raquo;</button>
+
+    </form>
+  </div>
+</body>
+</html>

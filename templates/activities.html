@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Workplan Entry</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .activity-block {
+            position: relative;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .action-btns {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+        }
+        .action-btns button {
+            margin-left: 5px;
+        }
+    </style>
+    <script>
+        // Remove required attributes (for the Back button)
+        function removeRequired() {
+            document.querySelectorAll("input, textarea, select").forEach(function(el) {
+                el.removeAttribute("required");
+            });
+        }
+
+        // Update quarter dropdown based on selected year, preserving previous value if still valid
+        function updateQuarterOptions(yearSelect, quarterSelect) {
+            let previousVal = quarterSelect.value;
+            quarterSelect.innerHTML = '';
+            var optEmpty = document.createElement('option');
+            optEmpty.value = '';
+            optEmpty.text = 'Quarter';
+            quarterSelect.appendChild(optEmpty);
+            var y = parseInt(yearSelect.value);
+            if (!y) return;
+            var mappingType = "";
+            if (quarterSelect.name.startsWith("start_quarter_")) {
+                mappingType = "start";
+            } else if (quarterSelect.name.startsWith("end_quarter_")) {
+                mappingType = "end";
+            }
+            var allowed = (partialQuartersMap[mappingType] && partialQuartersMap[mappingType][y]) || ["Q1", "Q2", "Q3", "Q4"];
+            allowed.forEach(function(q) {
+                var opt = document.createElement('option');
+                opt.value = q;
+                opt.text = q;
+                quarterSelect.appendChild(opt);
+            });
+            if (allowed.indexOf(previousVal) !== -1) {
+                quarterSelect.value = previousVal;
+            }
+        }
+        
+        // Listen for changes in year dropdowns to update the corresponding quarter dropdowns.
+        document.addEventListener("change", function(e) {
+            if (e.target && (e.target.name.startsWith("start_year_") || e.target.name.startsWith("end_year_"))) {
+                var block = e.target.closest(".activity-block");
+                if (block) {
+                    var prefix = e.target.name.startsWith("start_year_") ? "start_quarter_" : "end_quarter_";
+                    var quarterSelect = block.querySelector('select[name^="'+prefix+'"]');
+                    updateQuarterOptions(e.target, quarterSelect);
+                }
+            }
+        });
+        
+        // Toggle between Lock and Edit for an activity block.
+        function toggleActivityLock(outputIndex, blockIndex) {
+            var block = document.getElementById("activity_block_" + outputIndex + "_" + blockIndex);
+            if (block) {
+                var inputs = block.querySelectorAll("input, textarea, select");
+                var btn = block.querySelector(".lock-btn");
+                if (inputs.length > 0 && inputs[0].disabled) {
+                    inputs.forEach(function(input) {
+                        input.disabled = false;
+                    });
+                    if(btn) { btn.innerText = "Lock"; }
+                } else {
+                    inputs.forEach(function(input) {
+                        input.disabled = true;
+                    });
+                    if(btn) { btn.innerText = "Edit"; }
+                }
+            }
+        }
+        
+        // Delete an activity block; ensure at least one remains per output.
+        function deleteActivityBlock(outputIndex, blockIndex) {
+            var container = document.getElementById('activities_container_' + outputIndex);
+            var blocks = container.getElementsByClassName('activity-block');
+            if (blocks.length <= 1) {
+                alert("At least one workplan entry is required for this output.");
+                return;
+            }
+            var block = document.getElementById("activity_block_" + outputIndex + "_" + blockIndex);
+            if(block) {
+                container.removeChild(block);
+            }
+        }
+        
+        // Dynamically add a new activity block.
+        function addActivity(outputIndex) {
+            var container = document.getElementById('activities_container_' + outputIndex);
+            var count = container.getElementsByClassName('activity-block').length;
+            var newIndex = count;
+            var blockId = "activity_block_" + outputIndex + "_" + newIndex;
+            var outputNumber = container.getAttribute("data-output-number") || "";
+            var div = document.createElement('div');
+            div.className = "activity-block";
+            div.id = blockId;
+            div.innerHTML = `
+              <div class="action-btns">
+                <button type="button" class="btn btn-warning btn-sm lock-btn" onclick="toggleActivityLock(${outputIndex}, ${newIndex})">Lock</button>
+                <button type="button" class="btn btn-danger btn-sm" onclick="deleteActivityBlock(${outputIndex}, ${newIndex})">Delete</button>
+              </div>
+              <h5>Activity ${outputNumber}.${newIndex+1}</h5>
+              <div class="form-group">
+                <label>Activity Description:</label>
+                <textarea name="activity_desc_${outputIndex}_${newIndex}" class="form-control" required></textarea>
+              </div>
+              <div class="form-row">
+                <div class="form-group col-md-3">
+                  <label>Start Year</label>
+                  <select name="start_year_${outputIndex}_${newIndex}" class="form-control" required>
+                    <option value="">Year</option>
+                    ${years.map(y => `<option value="${y}">${y}</option>`).join('')}
+                  </select>
+                </div>
+                <div class="form-group col-md-3">
+                  <label>Start Quarter</label>
+                  <select name="start_quarter_${outputIndex}_${newIndex}" class="form-control" required>
+                    <option value="">Quarter</option>
+                  </select>
+                </div>
+                <div class="form-group col-md-3">
+                  <label>End Year</label>
+                  <select name="end_year_${outputIndex}_${newIndex}" class="form-control" required>
+                    <option value="">Year</option>
+                    ${years.map(y => `<option value="${y}">${y}</option>`).join('')}
+                  </select>
+                </div>
+                <div class="form-group col-md-3">
+                  <label>End Quarter</label>
+                  <select name="end_quarter_${outputIndex}_${newIndex}" class="form-control" required>
+                    <option value="">Quarter</option>
+                  </select>
+                </div>
+              </div>
+            `;
+            container.appendChild(div);
+            var sySelect = div.querySelector(`select[name="start_year_${outputIndex}_${newIndex}"]`);
+            var sqSelect = div.querySelector(`select[name="start_quarter_${outputIndex}_${newIndex}"]`);
+            var eySelect = div.querySelector(`select[name="end_year_${outputIndex}_${newIndex}"]`);
+            var eqSelect = div.querySelector(`select[name="end_quarter_${outputIndex}_${newIndex}"]`);
+            if(sySelect) updateQuarterOptions(sySelect, sqSelect);
+            if(eySelect) updateQuarterOptions(eySelect, eqSelect);
+        }
+        
+        // Validate that for each activity, start year is <= end year and if equal, start quarter <= end quarter.
+        function validateActivitiesForm() {
+            var blocks = document.querySelectorAll('.activity-block');
+            for (var i = 0; i < blocks.length; i++) {
+                var block = blocks[i];
+                var startYearSelect = block.querySelector('select[name^="start_year_"]');
+                var endYearSelect = block.querySelector('select[name^="end_year_"]');
+                var startQuarterSelect = block.querySelector('select[name^="start_quarter_"]');
+                var endQuarterSelect = block.querySelector('select[name^="end_quarter_"]');
+                var startYear = parseInt(startYearSelect.value);
+                var endYear = parseInt(endYearSelect.value);
+                if (isNaN(startYear) || isNaN(endYear)) {
+                    alert("Please select valid years for each activity.");
+                    return false;
+                }
+                if (startYear > endYear) {
+                    alert("Start year must be before or equal to end year.");
+                    return false;
+                }
+                if (startYear === endYear) {
+                    function quarterToNumber(q) {
+                        return parseInt(q.replace('Q',''));
+                    }
+                    var startQ = quarterToNumber(startQuarterSelect.value);
+                    var endQ = quarterToNumber(endQuarterSelect.value);
+                    if (isNaN(startQ) || isNaN(endQ)) {
+                        alert("Please select valid quarters for each activity.");
+                        return false;
+                    }
+                    if (startQ > endQ) {
+                        alert("For the same year, start quarter must be before or equal to end quarter.");
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+        
+        // These variables are passed from the server.
+        var years = {{ years|tojson }};
+        var partialQuartersMap = {% if partialQuartersMap is defined %}{{ partialQuartersMap|tojson }}{% else %}{}{% endif %};
+    </script>
+</head>
+<body class="p-4">
+    <div class="container">
+        <h2>Workplan Entry</h2>
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="alert alert-warning">
+                    {% for message in messages %}
+                        {{ message }}<br>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        <form action="{{ url_for('activities') }}" method="POST" onsubmit="return validateActivitiesForm();">
+            {% for i, output in enumerate(outputs) %}
+            <div class="card mb-3">
+                <div class="card-header">
+                    Output {{ output.number }}: {{ output.description }}
+                </div>
+                <div class="card-body">
+                    <div id="activities_container_{{ i }}" data-output-number="{{ output.number }}">
+                        {% set acts = activities_dict[i|string] if i|string in activities_dict else [] %}
+                        {% if acts|length > 0 %}
+                            {% for a, act in enumerate(acts) %}
+                            <div class="activity-block" id="activity_block_{{ i }}_{{ a }}">
+                                <div class="action-btns">
+                                    <button type="button" class="btn btn-warning btn-sm lock-btn" onclick="toggleActivityLock({{ i }}, {{ a }})">Lock</button>
+                                    <button type="button" class="btn btn-danger btn-sm" onclick="deleteActivityBlock({{ i }}, {{ a }})">Delete</button>
+                                </div>
+                                <h5>Activity {{ output.number }}.{{ a+1 }}</h5>
+                                <div class="form-group">
+                                    <label>Activity Description:</label>
+                                    <textarea name="activity_desc_{{ i }}_{{ a }}" class="form-control" required>{{ act.description }}</textarea>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group col-md-3">
+                                        <label>Start Year</label>
+                                        <select name="start_year_{{ i }}_{{ a }}" class="form-control" required>
+                                            <option value="">Year</option>
+                                            {% for y in years %}
+                                            <option value="{{ y }}" {% if act.start_year|string == y|string %}selected{% endif %}>{{ y }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <label>Start Quarter</label>
+                                        <select name="start_quarter_{{ i }}_{{ a }}" class="form-control" required>
+                                            <option value="">Quarter</option>
+                                            {% if act.start_year in partialQuartersMap.start %}
+                                                {% for q in partialQuartersMap.start[act.start_year] %}
+                                                <option value="{{ q }}" {% if act.start_quarter == q %}selected{% endif %}>{{ q }}</option>
+                                                {% endfor %}
+                                            {% else %}
+                                                {% for q in ["Q1", "Q2", "Q3", "Q4"] %}
+                                                <option value="{{ q }}" {% if act.start_quarter == q %}selected{% endif %}>{{ q }}</option>
+                                                {% endfor %}
+                                            {% endif %}
+                                        </select>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <label>End Year</label>
+                                        <select name="end_year_{{ i }}_{{ a }}" class="form-control" required>
+                                            <option value="">Year</option>
+                                            {% for y in years %}
+                                            <option value="{{ y }}" {% if act.end_year|string == y|string %}selected{% endif %}>{{ y }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="form-group col-md-3">
+                                        <label>End Quarter</label>
+                                        <select name="end_quarter_{{ i }}_{{ a }}" class="form-control" required>
+                                            <option value="">Quarter</option>
+                                            {% if act.end_year in partialQuartersMap.end %}
+                                                {% for q in partialQuartersMap.end[act.end_year] %}
+                                                <option value="{{ q }}" {% if act.end_quarter == q %}selected{% endif %}>{{ q }}</option>
+                                                {% endfor %}
+                                            {% else %}
+                                                {% for q in ["Q1", "Q2", "Q3", "Q4"] %}
+                                                <option value="{{ q }}" {% if act.end_quarter == q %}selected{% endif %}>{{ q }}</option>
+                                                {% endfor %}
+                                            {% endif %}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                        <!-- Default block if no activities exist yet -->
+                        <div class="activity-block" id="activity_block_{{ i }}_0">
+                            <div class="action-btns">
+                                <button type="button" class="btn btn-warning btn-sm lock-btn" onclick="toggleActivityLock({{ i }}, 0)">Lock</button>
+                                <button type="button" class="btn btn-danger btn-sm" onclick="deleteActivityBlock({{ i }}, 0)">Delete</button>
+                            </div>
+                            <h5>Activity {{ output.number }}.1</h5>
+                            <div class="form-group">
+                                <label>Activity Description:</label>
+                                <textarea name="activity_desc_{{ i }}_0" class="form-control" required></textarea>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group col-md-3">
+                                    <label>Start Year</label>
+                                    <select name="start_year_{{ i }}_0" class="form-control" required>
+                                        <option value="">Year</option>
+                                        {% for y in years %}
+                                        <option value="{{ y }}">{{ y }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <label>Start Quarter</label>
+                                    <select name="start_quarter_{{ i }}_0" class="form-control" required>
+                                        <option value="">Quarter</option>
+                                    </select>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <label>End Year</label>
+                                    <select name="end_year_{{ i }}_0" class="form-control" required>
+                                        <option value="">Year</option>
+                                        {% for y in years %}
+                                        <option value="{{ y }}">{{ y }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <label>End Quarter</label>
+                                    <select name="end_quarter_{{ i }}_0" class="form-control" required>
+                                        <option value="">Quarter</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <!-- Button to add another activity for this output -->
+                    <button type="button" class="btn btn-secondary btn-sm mt-2" onclick="addActivity({{ i }})">Add Another Activity</button>
+                </div>
+            </div>
+            {% endfor %}
+            <div class="form-group text-center">
+                <button type="submit" name="action" value="back" class="btn btn-warning" formnovalidate onclick="removeRequired()">&laquo; Back</button>
+                <button type="submit" name="action" value="next" class="btn btn-success">No More Activity and Next &raquo;</button>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

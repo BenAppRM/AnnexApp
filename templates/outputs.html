@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Output Entry</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <script>
+    // This function removes the "required" attribute from all fields when the user clicks Back
+    function removeRequired() {
+      document.querySelectorAll("input, textarea, select").forEach(function(el) {
+        el.removeAttribute("required");
+      });
+    }
+  </script>
+  <style>
+    /* Use Bootstrap grid to arrange buttons */
+  </style>
+</head>
+<body class="p-4">
+  <div class="container">
+    <h2>Output Entry</h2>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+      <div class="alert alert-info">
+        {% for message in messages %}
+          {{ message }}<br>
+        {% endfor %}
+      </div>
+      {% endif %}
+    {% endwith %}
+    <hr>
+    <!-- Single form for adding an output and handling Back/Next actions -->
+    <form action="{{ url_for('outputs') }}" method="POST">
+      <div class="form-group">
+        <label>Select Outcome:</label>
+        <select name="selected_outcome" class="form-control" required>
+          <option value="">-- Select Outcome --</option>
+          {% for outcome in outcomes %}
+          <option value="{{ loop.index0 }}">Outcome {{ loop.index }}: {{ outcome.description }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Output Description:</label>
+        <textarea name="output_desc" class="form-control" placeholder="Enter output description" required>{{ request.form.output_desc or '' }}</textarea>
+      </div>
+      <div class="form-group">
+        <label>Performance Indicators:</label>
+        <textarea name="pi" class="form-control" placeholder="Enter performance indicators" required>{{ request.form.pi or '' }}</textarea>
+      </div>
+      <div class="form-group">
+        <label>Baseline:</label>
+        <input type="text" name="baseline" class="form-control" placeholder="Enter baseline" value="{{ request.form.baseline or '' }}" required>
+      </div>
+      <div class="form-group">
+        <label>Target:</label>
+        <input type="text" name="target" class="form-control" placeholder="Enter target" value="{{ request.form.target or '' }}" required>
+      </div>
+      <div class="form-group">
+        <label>Means of Verification:</label>
+        <input type="text" name="mov" class="form-control" placeholder="Enter MOV" value="{{ request.form.mov or '' }}" required>
+      </div>
+      <div class="form-group">
+        <label>Assumptions:</label>
+        <textarea name="assumptions" class="form-control" placeholder="Enter assumptions" required>{{ request.form.assumptions or '' }}</textarea>
+      </div>
+      <!-- Row with three buttons: Back (left), Add Output (center), Next (right) -->
+      <div class="form-group text-center">
+		<button type="submit"
+				name="action"
+				value="back"
+				class="btn btn-warning"
+				onclick="removeRequired()"
+				formnovalidate>
+		  &laquo; Back
+		</button>
+
+        <button type="submit" name="action" value="add" class="btn btn-primary">Add Output</button>
+        {% if outcomes|length > 0 %}
+        <button type="submit" name="action" value="next" class="btn btn-success" onclick="removeRequired()">No More Output and Next &raquo;</button>
+        {% else %}
+        <button type="submit" name="action" value="next" class="btn btn-success" disabled>No More Output and Next &raquo;</button>
+        {% endif %}
+      </div>
+    </form>
+    
+    <hr>
+    <h4>Outputs Entered:</h4>
+    {% for outcome_index, output_list in outputs_by_outcome.items() %}
+      <div class="card mb-3">
+        <div class="card-header">
+          Outcome {{ outcome_index + 1 }}: {{ outcomes[outcome_index].description }}
+        </div>
+        <div class="card-body">
+          <ul class="list-group">
+            {% for global_index, output in output_list %}
+            <li class="list-group-item">
+              <strong>Output {{ output.number }}:</strong> {{ output.description }}<br>
+              <strong>Performance Indicators:</strong> {{ output.pi }}<br>
+              <strong>Baseline:</strong> {{ output.baseline }}<br>
+              <strong>Target:</strong> {{ output.target }}<br>
+              <strong>MOV:</strong> {{ output.mov }}<br>
+              <strong>Assumptions:</strong> {{ output.assumptions }}<br>
+              <form action="{{ url_for('edit_output', index=global_index) }}" method="POST" style="display:inline;">
+                <button type="submit" class="btn btn-sm btn-info">Edit</button>
+              </form>
+              <form action="{{ url_for('delete_output', index=global_index) }}" method="POST" style="display:inline;">
+                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+              </form>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</body>
+</html>

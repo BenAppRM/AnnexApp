@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Edit Procurement Entry ({{ type|capitalize }})</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <style>
+    .vertical-space { margin-bottom: 1rem; }
+  </style>
+  <script>
+    function updateDays(yearSelectId, monthSelectId, daySelectId) {
+      var year = document.getElementById(yearSelectId).value;
+      var month = document.getElementById(monthSelectId).value;
+      var daySelect = document.getElementById(daySelectId);
+      daySelect.innerHTML = '<option value="">Day</option>';
+      if (year && month) {
+        var d = new Date(year, new Date(Date.parse(month + " 1, " + year)).getMonth() + 1, 0);
+        var days = d.getDate();
+        for (var i = 1; i <= days; i++) {
+          var opt = document.createElement('option');
+          opt.value = i;
+          opt.innerHTML = i;
+          daySelect.appendChild(opt);
+        }
+      }
+    }
+  </script>
+</head>
+<body class="p-4">
+  <div class="container">
+    <h2>Edit Procurement Entry ({{ type|capitalize }})</h2>
+    <form action="{{ url_for('edit_procurement', type=type, index=index) }}" method="POST">
+      {% if type == 'goods' %}
+      <div class="form-group vertical-space">
+        <label>Project Related Activity</label>
+        <input type="text" name="pog_project_activity" class="form-control" value="{{ entry.project_activity }}" required>
+      </div>
+      <div class="form-group vertical-space">
+        <label>Required Good (Description)</label>
+        <input type="text" name="pog_required_good" class="form-control" value="{{ entry.required_good }}" required>
+      </div>
+      <div class="form-group vertical-space">
+        <label>Unit of Measure</label>
+        <input type="text" name="pog_unit_measure" class="form-control" value="{{ entry.unit_measure }}" required>
+      </div>
+      <div class="form-group vertical-space">
+        <label>Estimated Quantities Required</label>
+        <input type="number" name="pog_estimated_qty" class="form-control" step="1" value="{{ entry.estimated_qty }}" required>
+      </div>
+      <div class="form-group vertical-space">
+        <label>Unit Price (USD)</label>
+        <input type="number" name="pog_unit_price" class="form-control" step="1" value="{{ entry.unit_price }}" required>
+      </div>
+      <div class="form-group vertical-space">
+        <label>Estimated Total Cost (USD)</label>
+        <input type="number" name="pog_estimated_total_cost" class="form-control" step="1" value="{{ entry.estimated_total_cost }}" required>
+      </div>
+      <div class="form-group vertical-space">
+        <label>Procurement Method</label>
+        <input type="text" name="pog_procurement_method" class="form-control" value="{{ entry.procurement_method }}" required>
+      </div>
+      <!-- Date fields for Goods -->
+      <div class="form-row vertical-space">
+        <div class="form-group col-md-4">
+          <label>Tender Launch Date - Year</label>
+          <select id="pog_tender_launch_year" name="pog_tender_launch_year" class="form-control" required>
+            <option value="">Year</option>
+            {% for y in range(2020,2051) %}
+            <option value="{{ y }}" {% if entry.tender_launch_date.split('-')[0] == y|string %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group col-md-4">
+          <label>Month</label>
+          <select id="pog_tender_launch_month" name="pog_tender_launch_month" class="form-control" required onchange="updateDays('pog_tender_launch_year','pog_tender_launch_month','pog_tender_launch_day')">
+            <option value="">Month</option>
+            {% for m in ['January','February','March','April','May','June','July','August','September','October','November','December'] %}
+            <option value="{{ m }}" {% if entry.tender_launch_date.split('-')[1]|int == loop.index %}selected{% endif %}>{{ m }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group col-md-4">
+          <label>Day</label>
+          <select id="pog_tender_launch_day" name="pog_tender_launch_day" class="form-control" required>
+            <option value="">Day</option>
+            {% set launch_day = entry.tender_launch_date.split('-')[2]|int %}
+            {% for d in range(1,32) %}
+            <option value="{{ d }}" {% if launch_day == d %}selected{% endif %}>{{ d }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <!-- Contract Award Date -->
+      <div class="form-row vertical-space">
+        <div class="form-group col-md-4">
+          <label>Contract Award Date - Year</label>
+          <select id="pog_contract_award_year" name="pog_contract_award_year" class="form-control" required>
+            <option value="">Year</option>
+            {% for y in range(2020,2051) %}
+            <option value="{{ y }}" {% if entry.contract_award_date.split('-')[0] == y|string %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group col-md-4">
+          <label>Month</label>
+          <select id="pog_contract_award_month" name="pog_contract_award_month" class="form-control" required onchange="updateDays('pog_contract_award_year','pog_contract_award_month','pog_contract_award_day')">
+            <option value="">Month</option>
+            {% for m in ['January','February','March','April','May','June','July','August','September','October','November','December'] %}
+            <option value="{{ m }}" {% if entry.contract_award_date.split('-')[1]|int == loop.index %}selected{% endif %}>{{ m }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group col-md-4">
+          <label>Day</label>
+          <select id="pog_contract_award_day" name="pog_contract_award_day" class="form-control" required>
+            <option value="">Day</option>
+            {% set award_day = entry.contract_award_date.split('-')[2]|int %}
+            {% for d in range(1,32) %}
+            <option value="{{ d }}" {% if award_day == d %}selected{% endif %}>{{ d }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <!-- Delivery Date -->
+      <div class="form-row vertical-space">
+        <div class="form-group col-md-4">
+          <label>Delivery Date - Year</label>
+          <select id="pog_delivery_year" name="pog_delivery_year" class="form-control" required>
+            <option value="">Year</option>
+            {% for y in range(2020,2051) %}
+            <option value="{{ y }}" {% if entry.delivery_date.split('-')[0] == y|string %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group col-md-4">
+          <label>Month</label>
+          <select id="pog_delivery_month" name="pog_delivery_month" class="form-control" required onchange="updateDays('pog_delivery_year','pog_delivery_month','pog_delivery_day')">
+            <option value="">Month</option>
+            {% for m in ['January','February','March','April','May','June','July','August','September','October','November','December'] %}
+            <option value="{{ m }}" {% if entry.delivery_date.split('-')[1]|int == loop.index %}selected{% endif %}>{{ m }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group col-md-4">
+          <label>Day</label>
+          <select id="pog_delivery_day" name="pog_delivery_day" class="form-control" required>
+            <option value="">Day</option>
+            {% set delivery_day = entry.delivery_date.split('-')[2]|int %}
+            {% for d in range(1,32) %}
+            <option value="{{ d }}" {% if delivery_day == d %}selected{% endif %}>{{ d }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="form-group vertical-space">
+        <label>Final Destination and Delivery Terms</label>
+        <input type="text" name="pog_final_destination_terms" class="form-control" value="{{ entry.final_destination_terms }}" required>
+      </div>
+      <div class="form-group vertical-space">
+        <label>Status</label>
+        <input type="text" name="pog_status" class="form-control" value="{{ entry.status }}" required>
+      </div>
+      <div class="form-group vertical-space">
+        <label>Other Constraints or Considerations</label>
+        <input type="text" name="pog_constraints" class="form-control" value="{{ entry.constraints }}" required>
+      </div>
+      {% else %}
+        {# For type 'services', replicate the above block with field names prefixed by "psc_" #}
+      {% endif %}
+      <button type="submit" class="btn btn-primary">Save Changes</button>
+      <a href="{{ url_for('procurement') }}" class="btn btn-secondary">Cancel</a>
+    </form>
+  </div>
+</body>
+</html>

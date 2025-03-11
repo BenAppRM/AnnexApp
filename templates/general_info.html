@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>General Information</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <script>
+    function updateDays(yearSelectId, monthSelectId, daySelectId, preselected) {
+      var year = document.getElementById(yearSelectId).value;
+      var month = document.getElementById(monthSelectId).value;
+      var daySelect = document.getElementById(daySelectId);
+      daySelect.innerHTML = '<option value="">Day</option>';
+      if (year && month) {
+        var d = new Date(year, new Date(Date.parse(month + " 1, " + year)).getMonth() + 1, 0);
+        var days = d.getDate();
+        for (var i = 1; i <= days; i++) {
+          var opt = document.createElement('option');
+          opt.value = i;
+          opt.innerHTML = i;
+          if(preselected && parseInt(preselected) === i){
+            opt.selected = true;
+          }
+          daySelect.appendChild(opt);
+        }
+      }
+    }
+    window.onload = function() {
+      {% if general_info.date_eod %}
+        {% set parts = general_info.date_eod.split('-') %}
+        document.getElementById("year_eod").value = "{{ parts[0] }}";
+        document.getElementById("month_eod").value = "{{ general_info.month_eod }}";
+        updateDays("year_eod", "month_eod", "day_eod", "{{ general_info.day_eod }}");
+      {% else %}
+        updateDays("year_eod", "month_eod", "day_eod");
+      {% endif %}
+      {% if general_info.date_nte %}
+        {% set parts = general_info.date_nte.split('-') %}
+        document.getElementById("year_nte").value = "{{ parts[0] }}";
+        document.getElementById("month_nte").value = "{{ general_info.month_nte }}";
+        updateDays("year_nte", "month_nte", "day_nte", "{{ general_info.day_nte }}");
+      {% else %}
+        updateDays("year_nte", "month_nte", "day_nte");
+      {% endif %}
+    }
+  </script>
+</head>
+<body class="p-4">
+  <div class="container">
+    <h2>General Information</h2>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="alert alert-warning">
+          {% for message in messages %}
+            {{ message }}<br>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    <form action="{{ url_for('general') }}" method="POST">
+      <div class="form-group">
+        <label>OPA EOD Date:</label>
+        <div class="form-row">
+          <div class="col">
+            <select id="year_eod" name="year_eod" class="form-control" required>
+              <option value="">Year</option>
+              {% for y in range(2020,2051) %}
+                <option value="{{ y }}" {% if general_info.year_eod == y|string %}selected{% endif %}>{{ y }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col">
+            <select id="month_eod" name="month_eod" class="form-control" onchange="updateDays('year_eod','month_eod','day_eod','{{ general_info.day_eod or '' }}')" required>
+              <option value="">Month</option>
+              {% set months = ['January','February','March','April','May','June','July','August','September','October','November','December'] %}
+              {% for m in months %}
+                <option value="{{ m }}" {% if general_info.month_eod == m %}selected{% endif %}>{{ m }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col">
+            <select id="day_eod" name="day_eod" class="form-control" required>
+              <option value="">Day</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>OPA NTE Date:</label>
+        <div class="form-row">
+          <div class="col">
+            <select id="year_nte" name="year_nte" class="form-control" required>
+              <option value="">Year</option>
+              {% for y in range(2020,2051) %}
+                <option value="{{ y }}" {% if general_info.year_nte == y|string %}selected{% endif %}>{{ y }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col">
+            <select id="month_nte" name="month_nte" class="form-control" onchange="updateDays('year_nte','month_nte','day_nte','{{ general_info.day_nte or '' }}')" required>
+              <option value="">Month</option>
+              {% for m in months %}
+                <option value="{{ m }}" {% if general_info.month_nte == m %}selected{% endif %}>{{ m }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col">
+            <select id="day_nte" name="day_nte" class="form-control" required>
+              <option value="">Day</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Project Title:</label>
+        <input type="text" name="project_title" class="form-control" value="{{ general_info.project_title or '' }}" required>
+      </div>
+      <div class="form-group">
+        <label>Project Symbol:</label>
+        <input type="text" name="project_symbol" class="form-control" value="{{ general_info.project_symbol or '' }}" required>
+      </div>
+      <div class="form-group">
+        <label>Operational Partner:</label>
+        <input type="text" name="operational_partner" class="form-control" value="{{ general_info.operational_partner or '' }}" required>
+      </div>
+      <div class="form-group">
+        <label>OPA Value:</label>
+        <input type="number" step="0.01" name="opa_value" class="form-control" value="{{ general_info.opa_value or '' }}" required>
+      </div>
+      <button type="submit" name="action" value="next" class="btn btn-success">Next &raquo;</button>
+    </form>
+  </div>
+</body>
+</html>
