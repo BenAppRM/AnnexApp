@@ -6,13 +6,16 @@
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
   <style>
     body { padding-top: 20px; }
-    h1, h2 { margin-top: 20px; }
+    h1, h2, h3 { margin-top: 20px; }
     .section { margin-bottom: 30px; }
+    .table-header { background-color: #CCE5FF; font-weight: bold; }
+    .table-subheader { background-color: #E0E0E0; font-weight: bold; }
+    .table-total { background-color: #BFBFBF; font-weight: bold; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Review Your Data</h1>
+    <h1 class="text-center">Review Your Data</h1>
 
     <!-- General Information -->
     <div class="card section">
@@ -20,85 +23,131 @@
         General Information
       </div>
       <div class="card-body">
-        <p><strong>OPA EOD:</strong> {{ data.general_info.date_eod }}</p>
-        <p><strong>OPA NTE:</strong> {{ data.general_info.date_nte }}</p>
-        <p><strong>Project Title:</strong> {{ data.general_info.project_title }}</p>
-        <p><strong>Project Symbol:</strong> {{ data.general_info.project_symbol }}</p>
-        <p><strong>Operational Partner:</strong> {{ data.general_info.operational_partner }}</p>
-        <p><strong>OPA Value:</strong> {{ data.general_info.opa_value }}</p>
+        <table class="table table-bordered">
+          <tr>
+            <th>OPA EOD</th>
+            <td>{{ data.general_info.date_eod }}</td>
+          </tr>
+          <tr>
+            <th>OPA NTE</th>
+            <td>{{ data.general_info.date_nte }}</td>
+          </tr>
+          <tr>
+            <th>Project Title</th>
+            <td>{{ data.general_info.project_title }}</td>
+          </tr>
+          <tr>
+            <th>Project Symbol</th>
+            <td>{{ data.general_info.project_symbol }}</td>
+          </tr>
+          <tr>
+            <th>Operational Partner</th>
+            <td>{{ data.general_info.operational_partner }}</td>
+          </tr>
+          <tr>
+            <th>OPA Value (USD)</th>
+            <td>{{ data.general_info.opa_value }}</td>
+          </tr>
+        </table>
       </div>
     </div>
 
-    <!-- Outcomes -->
+    <!-- Outcomes and Outputs (Results Matrix) -->
     <div class="card section">
-      <div class="card-header">
-        Outcomes
-      </div>
+      <div class="card-header">RESULTS MATRIX</div>
       <div class="card-body">
         {% if data.outcomes|length > 0 %}
-          <ul class="list-group">
-            {% for outcome in data.outcomes %}
-            <li class="list-group-item">
-              <strong>Description:</strong> {{ outcome.description }}<br>
-              <strong>Performance Indicators:</strong> {{ outcome.pi }}<br>
-              <strong>Baseline:</strong> {{ outcome.baseline }}<br>
-              <strong>Target:</strong> {{ outcome.target }}<br>
-              <strong>MOV:</strong> {{ outcome.mov }}<br>
-              <strong>Assumptions:</strong> {{ outcome.assumptions }}
-            </li>
-            {% endfor %}
-          </ul>
+          <table class="table table-bordered">
+            <thead>
+              <tr class="table-header">
+                <th>Outcome Statement</th>
+                <th>Performance Indicator</th>
+                <th>Baseline</th>
+                <th>Target</th>
+                <th>Means of Verification</th>
+                <th>Assumptions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for outcome in data.outcomes %}
+              <tr class="table-subheader">
+                <td colspan="6">Outcome {{ loop.index }}: {{ outcome.description }}</td>
+              </tr>
+                {% for output in data.outputs %}
+                  {% if output.outcome_index == loop.index0 %}
+                  <tr>
+                    <td style="padding-left:20px;">Output {{ output.number }}: {{ output.description }}</td>
+                    <td>{{ output.pi }}</td>
+                    <td>{{ output.baseline }}</td>
+                    <td>{{ output.target }}</td>
+                    <td>{{ output.mov }}</td>
+                    <td>{{ output.assumptions }}</td>
+                  </tr>
+                  {% endif %}
+                {% endfor %}
+              {% endfor %}
+            </tbody>
+          </table>
         {% else %}
-          <p>No outcomes entered.</p>
+          <p>No outcomes or outputs entered.</p>
         {% endif %}
       </div>
     </div>
 
-    <!-- Outputs -->
+    <!-- Workplan (Simplified) -->
     <div class="card section">
-      <div class="card-header">
-        Outputs
-      </div>
+      <div class="card-header">WORKPLAN</div>
       <div class="card-body">
-        {% if data.outputs|length > 0 %}
-          <ul class="list-group">
-            {% for output in data.outputs %}
-            <li class="list-group-item">
-              <strong>Output {{ output.number }}:</strong> {{ output.description }}<br>
-              <strong>Performance Indicators:</strong> {{ output.pi }}<br>
-              <strong>Baseline:</strong> {{ output.baseline }}<br>
-              <strong>Target:</strong> {{ output.target }}<br>
-              <strong>MOV:</strong> {{ output.mov }}<br>
-              <strong>Assumptions:</strong> {{ output.assumptions }}<br>
-              <strong>Associated Outcome Index:</strong> {{ output.outcome_index }}
-            </li>
-            {% endfor %}
-          </ul>
+        {% if data.activities %}
+          <table class="table table-bordered">
+            <thead class="table-header">
+              <tr>
+                <th>Output</th>
+                <th>Activity Description</th>
+                <th>Start Year</th>
+                <th>Start Quarter</th>
+                <th>End Year</th>
+                <th>End Quarter</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for out_idx, acts in data.activities.items() %}
+                {% for act in acts %}
+                <tr>
+                  <td>Output {{ out_idx|int + 1 }}</td>
+                  <td>{{ act.description }}</td>
+                  <td>{{ act.start_year }}</td>
+                  <td>{{ act.start_quarter }}</td>
+                  <td>{{ act.end_year }}</td>
+                  <td>{{ act.end_quarter }}</td>
+                </tr>
+                {% endfor %}
+              {% endfor %}
+            </tbody>
+          </table>
         {% else %}
-          <p>No outputs entered.</p>
+          <p>No workplan activities entered.</p>
         {% endif %}
       </div>
     </div>
 
-    <!-- Output Budgets -->
+    <!-- Budget Table -->
     <div class="card section">
-      <div class="card-header">
-        Output Budgets
-      </div>
+      <div class="card-header">BUDGET</div>
       <div class="card-body">
         {% if data.output_budgets %}
           {% for out_idx, budgets in data.output_budgets.items() %}
             <h5>Output {{ out_idx|int + 1 }} Budgets</h5>
             {% if budgets|length > 0 %}
             <table class="table table-bordered">
-              <thead>
+              <thead class="table-header">
                 <tr>
                   <th>FAO Category</th>
                   <th>Budget Title</th>
                   <th>Budget Unit</th>
                   <th>No. of Units</th>
-                  <th>Unit Cost</th>
-                  <th>Total Cost</th>
+                  <th>Unit Cost (USD)</th>
+                  <th>Total Cost (USD)</th>
                   <th>Year Allocations</th>
                 </tr>
               </thead>
@@ -117,7 +166,7 @@
               </tbody>
             </table>
             {% else %}
-              <p>No budget entries for this output.</p>
+              <p>No budget entries for Output {{ out_idx|int + 1 }}.</p>
             {% endif %}
           {% endfor %}
         {% else %}
@@ -126,93 +175,52 @@
       </div>
     </div>
 
-    <!-- Activities -->
-    <div class="card section">
-      <div class="card-header">
-        Activities
-      </div>
+    <!-- Procurement of Goods -->
+    <h3>Procurement of Goods</h3>
+    <div class="card section mb-3">
+      <div class="card-header">Procurement of Goods</div>
       <div class="card-body">
-        {% if data.activities %}
-          {% for out_idx, acts in data.activities.items() %}
-            <h5>Output {{ out_idx|int + 1 }} Activities</h5>
-            {% if acts|length > 0 %}
+        {% if data.use_goods and data.goods|length > 0 %}
+          <div class="table-responsive">
             <table class="table table-bordered">
-              <thead>
+              <thead style="background-color:#cde1f9;">
                 <tr>
-                  <th>Description</th>
-                  <th>Start Year</th>
-                  <th>Start Quarter</th>
-                  <th>End Year</th>
-                  <th>End Quarter</th>
+                  <th>Project Activity</th>
+                  <th>Required Good</th>
+                  <th>Unit Measure</th>
+                  <th>Estimated Qty</th>
+                  <th>Unit Price (USD)</th>
+                  <th>Estimated Total Cost (USD)</th>
+                  <th>Procurement Method</th>
+                  <th>Tender Launch Date</th>
+                  <th>Contract Award Date</th>
+                  <th>Delivery Date</th>
+                  <th>Final Destination Terms</th>
+                  <th>Status</th>
+                  <th>Constraints</th>
                 </tr>
               </thead>
               <tbody>
-                {% for act in acts %}
+                {% for entry in data.goods %}
                 <tr>
-                  <td>{{ act.description }}</td>
-                  <td>{{ act.start_year }}</td>
-                  <td>{{ act.start_quarter }}</td>
-                  <td>{{ act.end_year }}</td>
-                  <td>{{ act.end_quarter }}</td>
+                  <td>{{ entry.project_activity }}</td>
+                  <td>{{ entry.required_good }}</td>
+                  <td>{{ entry.unit_measure }}</td>
+                  <td>{{ entry.estimated_qty }}</td>
+                  <td>{{ entry.unit_price }}</td>
+                  <td>{{ entry.estimated_total_cost }}</td>
+                  <td>{{ entry.procurement_method }}</td>
+                  <td>{{ entry.tender_launch_date }}</td>
+                  <td>{{ entry.contract_award_date }}</td>
+                  <td>{{ entry.delivery_date }}</td>
+                  <td>{{ entry.final_destination_terms }}</td>
+                  <td>{{ entry.status }}</td>
+                  <td>{{ entry.constraints }}</td>
                 </tr>
                 {% endfor %}
               </tbody>
             </table>
-            {% else %}
-              <p>No activities for this output.</p>
-            {% endif %}
-          {% endfor %}
-        {% else %}
-          <p>No activities entered.</p>
-        {% endif %}
-      </div>
-    </div>
-
-    <!-- Procurement of Goods -->
-    <div class="card section">
-      <div class="card-header">
-        Procurement of Goods
-      </div>
-      <div class="card-body">
-        {% if data.use_goods and data.goods|length > 0 %}
-          <table class="table table-bordered">
-            <thead>
-              <tr>
-                <th>Project Activity</th>
-                <th>Required Good</th>
-                <th>Unit Measure</th>
-                <th>Estimated Qty</th>
-                <th>Unit Price</th>
-                <th>Estimated Total Cost</th>
-                <th>Procurement Method</th>
-                <th>Tender Launch Date</th>
-                <th>Contract Award Date</th>
-                <th>Delivery Date</th>
-                <th>Final Destination Terms</th>
-                <th>Status</th>
-                <th>Constraints</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for entry in data.goods %}
-              <tr>
-                <td>{{ entry.project_activity }}</td>
-                <td>{{ entry.required_good }}</td>
-                <td>{{ entry.unit_measure }}</td>
-                <td>{{ entry.estimated_qty }}</td>
-                <td>{{ entry.unit_price }}</td>
-                <td>{{ entry.estimated_total_cost }}</td>
-                <td>{{ entry.procurement_method }}</td>
-                <td>{{ entry.tender_launch_date }}</td>
-                <td>{{ entry.contract_award_date }}</td>
-                <td>{{ entry.delivery_date }}</td>
-                <td>{{ entry.final_destination_terms }}</td>
-                <td>{{ entry.status }}</td>
-                <td>{{ entry.constraints }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+          </div>
         {% else %}
           <p>No Procurement of Goods entries.</p>
         {% endif %}
@@ -220,59 +228,58 @@
     </div>
 
     <!-- Subcontracting of Commercial Services -->
-    <div class="card section">
-      <div class="card-header">
-        Subcontracting of Commercial Services
-      </div>
+    <h3>Subcontracting of Commercial Services</h3>
+    <div class="card section mb-3">
+      <div class="card-header">Subcontracting of Commercial Services</div>
       <div class="card-body">
         {% if data.use_services and data.services|length > 0 %}
-          <table class="table table-bordered">
-            <thead>
-              <tr>
-                <th>Project Activity</th>
-                <th>Required Service</th>
-                <th>Estimated Contracts</th>
-                <th>Unit Price</th>
-                <th>Estimated Total Cost</th>
-                <th>Procurement Method</th>
-                <th>Tender Launch Date</th>
-                <th>Contract Award Date</th>
-                <th>Delivery Date</th>
-                <th>Status</th>
-                <th>Constraints</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for entry in data.services %}
-              <tr>
-                <td>{{ entry.project_activity }}</td>
-                <td>{{ entry.required_service }}</td>
-                <td>{{ entry.estimated_number_of_contracts }}</td>
-                <td>{{ entry.unit_price }}</td>
-                <td>{{ entry.estimated_total_cost }}</td>
-                <td>{{ entry.procurement_method }}</td>
-                <td>{{ entry.tender_launch_date }}</td>
-                <td>{{ entry.contract_award_date }}</td>
-                <td>{{ entry.delivery_date }}</td>
-                <td>{{ entry.status }}</td>
-                <td>{{ entry.constraints }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+          <div class="table-responsive">
+            <table class="table table-bordered">
+              <thead style="background-color:#cde1f9;">
+                <tr>
+                  <th>Project Activity</th>
+                  <th>Required Service</th>
+                  <th>Estimated Contracts</th>
+                  <th>Unit Price (USD)</th>
+                  <th>Estimated Total Cost (USD)</th>
+                  <th>Procurement Method</th>
+                  <th>Tender Launch Date</th>
+                  <th>Contract Award Date</th>
+                  <th>Delivery Date</th>
+                  <th>Status</th>
+                  <th>Constraints</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for entry in data.services %}
+                <tr>
+                  <td>{{ entry.project_activity }}</td>
+                  <td>{{ entry.required_service }}</td>
+                  <td>{{ entry.estimated_number_of_contracts }}</td>
+                  <td>{{ entry.unit_price }}</td>
+                  <td>{{ entry.estimated_total_cost }}</td>
+                  <td>{{ entry.procurement_method }}</td>
+                  <td>{{ entry.tender_launch_date }}</td>
+                  <td>{{ entry.contract_award_date }}</td>
+                  <td>{{ entry.delivery_date }}</td>
+                  <td>{{ entry.status }}</td>
+                  <td>{{ entry.constraints }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
         {% else %}
-          <p>No Subcontracting entries.</p>
+          <p>No Procurement of Commercial Services entries.</p>
         {% endif %}
       </div>
     </div>
 
-    <!-- Confirmation Buttons -->
-    <form action="{{ url_for('review') }}" method="POST">
-      <div class="form-group">
-        <button type="submit" class="btn btn-success">Confirm &amp; Generate Document</button>
-        <a href="{{ url_for('procurement') }}" class="btn btn-secondary">Back</a>
-      </div>
-    </form>
+    <!-- Navigation Buttons -->
+    <div class="section text-center">
+      <a href="{{ url_for('procurement') }}" class="btn btn-secondary">Back</a>
+      <a href="{{ url_for('finalize') }}" class="btn btn-success">Submit &amp; Generate Document</a>
+    </div>
   </div>
 </body>
 </html>

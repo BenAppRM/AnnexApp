@@ -8,6 +8,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.section import WD_ORIENT
 from docx.oxml.ns import nsdecls
 from docx.oxml import parse_xml
+import os
 
 app = Flask(__name__)
 app.secret_key = "your_secret_key_here"  # REPLACE with a strong secret key!
@@ -700,7 +701,7 @@ def generate_goods_table(doc):
         return
     headers = [
         "Project Related Activity",
-        "Required Good (Description)",
+        "Required Good",
         "Unit of Measure",
         "Estimated Quantities",
         "Unit Price (USD)",
@@ -754,7 +755,7 @@ def generate_subcontracting_table(doc):
     headers = [
         "Project Activity",
         "Required Service",
-        "Estimated # of Contracts",
+        "Estimated Number of Contracts",
         "Unit Price (USD)",
         "Estimated Total Cost (USD)",
         "Procurement Method",
@@ -1390,7 +1391,11 @@ def delete_output(index):
     flash("Output and its associated budgets and activities deleted.")
     return redirect(url_for('outputs'))
 
-import os
+@app.route('/generate_doc')
+def generate_doc():
+    # Replace this with your document-generation logic.
+    return "Word document generated (placeholder)."
+
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))  # Get the assigned port
